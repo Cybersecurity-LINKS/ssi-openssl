@@ -467,7 +467,9 @@ typedef enum OPTION_choice {
     OPT_DANE_TLSA_RRDATA, OPT_DANE_EE_NO_NAME,
     OPT_ENABLE_PHA,
     OPT_SCTP_LABEL_BUG,
-    OPT_R_ENUM, OPT_PROV_ENUM
+    OPT_R_ENUM, OPT_PROV_ENUM,
+	OPT_DID,
+	OPT_DID_METHODS
 } OPTION_CHOICE;
 
 const OPTIONS s_client_options[] = {
@@ -691,6 +693,10 @@ const OPTIONS s_client_options[] = {
 
     OPT_PARAMETERS(),
     {"host:port", 0, 0, "Where to connect; same as -connect option"},
+	{ "did", OPT_DID, 's',
+			"Set the client did to send to the server" },
+	{ "did_methods", OPT_DID_METHODS, 's',
+			"list of did methods supported by the client (comma-separated list)" },
     {NULL}
 };
 
@@ -781,6 +787,7 @@ static int new_session_cb(SSL *s, SSL_SESSION *sess)
 
 int s_client_main(int argc, char **argv)
 {
+	EVP_PKEY *did_pkey = NULL;
     BIO *sbio;
     EVP_PKEY *key = NULL;
     SSL *con = NULL;
@@ -898,6 +905,9 @@ int s_client_main(int argc, char **argv)
     __msan_unpoison(&writefds, sizeof(writefds));
 # endif
 #endif
+
+    char *did = NULL;
+    const char *did_methods = NULL;
 
     c_quiet = 0;
     c_debug = 0;
@@ -1461,6 +1471,12 @@ int s_client_main(int argc, char **argv)
         case OPT_ENABLE_PHA:
             enable_pha = 1;
             break;
+		case OPT_DID:
+			did = opt_arg();
+			break;
+		case OPT_DID_METHODS:
+			did_methods = opt_arg();
+			break;
         }
     }
 
@@ -1637,6 +1653,10 @@ int s_client_main(int argc, char **argv)
         if (cert == NULL)
             goto end;
     }
+
+    if (did)
+		did_pkey = load_key("apps/my_keys/client_did_pkey.pem", 0, 0, NULL,
+				NULL, "client did private key");
 
     if (chain_file != NULL) {
         if (!load_certs(chain_file, 0, &chain, pass, "client certificate chain"))
@@ -1908,6 +1928,18 @@ int s_client_main(int argc, char **argv)
 
     if (!set_cert_key_stuff(ctx, cert, key, chain, build_chain))
         goto end;
+
+    if (did_methods) {
+		if (!SSL_CTX_set_did_methods(ctx, did_methods)) {
+			BIO_printf(bio_err, "Error setting did_methods\n");
+			goto end;
+		}
+	}
+
+	//char *s = strdup("did:ott:47D81093165893CAAA00981ECCA21BAFB218F3F7FFAA99D505C383EDCB2D0480");
+	if (did)
+		if (!set_did_key_stuff(ctx, did_pkey, did))
+			goto end;
 
     if (!noservername) {
         tlsextcbp.biodebug = bio_err;
@@ -3144,105 +3176,112 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 #endif
 
     if (full) {
-        int got_a_chain = 0;
+    	if(!is_did_handshake(s)){
+			int got_a_chain = 0;
 
-        sk = SSL_get_peer_cert_chain(s);
-        if (sk != NULL) {
-            got_a_chain = 1;
+			sk = SSL_get_peer_cert_chain(s);
+			if (sk != NULL) {
+				got_a_chain = 1;
 
-            BIO_printf(bio, "---\nCertificate chain\n");
-            for (i = 0; i < sk_X509_num(sk); i++) {
-                BIO_printf(bio, "%2d s:", i);
-                X509_NAME_print_ex(bio, X509_get_subject_name(sk_X509_value(sk, i)), 0, get_nameopt());
-                BIO_puts(bio, "\n");
-                BIO_printf(bio, "   i:");
-                X509_NAME_print_ex(bio, X509_get_issuer_name(sk_X509_value(sk, i)), 0, get_nameopt());
-                BIO_puts(bio, "\n");
-                public_key = X509_get_pubkey(sk_X509_value(sk, i));
-                if (public_key != NULL) {
-                    BIO_printf(bio, "   a:PKEY: %s, %d (bit); sigalg: %s\n",
-                               OBJ_nid2sn(EVP_PKEY_get_base_id(public_key)),
-                               EVP_PKEY_get_bits(public_key),
-                               OBJ_nid2sn(X509_get_signature_nid(sk_X509_value(sk, i))));
-                    EVP_PKEY_free(public_key);
-                }
-                BIO_printf(bio, "   v:NotBefore: ");
-                ASN1_TIME_print(bio, X509_get0_notBefore(sk_X509_value(sk, i)));
-                BIO_printf(bio, "; NotAfter: ");
-                ASN1_TIME_print(bio, X509_get0_notAfter(sk_X509_value(sk, i)));
-                BIO_puts(bio, "\n");
-                if (c_showcerts)
-                    PEM_write_bio_X509(bio, sk_X509_value(sk, i));
-            }
-        }
+				BIO_printf(bio, "---\nCertificate chain\n");
+				for (i = 0; i < sk_X509_num(sk); i++) {
+					BIO_printf(bio, "%2d s:", i);
+					X509_NAME_print_ex(bio, X509_get_subject_name(sk_X509_value(sk, i)), 0, get_nameopt());
+					BIO_puts(bio, "\n");
+					BIO_printf(bio, "   i:");
+					X509_NAME_print_ex(bio, X509_get_issuer_name(sk_X509_value(sk, i)), 0, get_nameopt());
+					BIO_puts(bio, "\n");
+					public_key = X509_get_pubkey(sk_X509_value(sk, i));
+					if (public_key != NULL) {
+						BIO_printf(bio, "   a:PKEY: %s, %d (bit); sigalg: %s\n",
+								   OBJ_nid2sn(EVP_PKEY_get_base_id(public_key)),
+								   EVP_PKEY_get_bits(public_key),
+								   OBJ_nid2sn(X509_get_signature_nid(sk_X509_value(sk, i))));
+						EVP_PKEY_free(public_key);
+					}
+					BIO_printf(bio, "   v:NotBefore: ");
+					ASN1_TIME_print(bio, X509_get0_notBefore(sk_X509_value(sk, i)));
+					BIO_printf(bio, "; NotAfter: ");
+					ASN1_TIME_print(bio, X509_get0_notAfter(sk_X509_value(sk, i)));
+					BIO_puts(bio, "\n");
+					if (c_showcerts)
+						PEM_write_bio_X509(bio, sk_X509_value(sk, i));
+				}
+			}
 
-        BIO_printf(bio, "---\n");
-        peer = SSL_get0_peer_certificate(s);
-        if (peer != NULL) {
-            BIO_printf(bio, "Server certificate\n");
+			BIO_printf(bio, "---\n");
+			peer = SSL_get0_peer_certificate(s);
+			if (peer != NULL) {
+				BIO_printf(bio, "Server certificate\n");
 
-            /* Redundant if we showed the whole chain */
-            if (!(c_showcerts && got_a_chain))
-                PEM_write_bio_X509(bio, peer);
-            dump_cert_text(bio, peer);
-        } else {
-            BIO_printf(bio, "no peer certificate available\n");
-        }
-        print_ca_names(bio, s);
+				/* Redundant if we showed the whole chain */
+				if (!(c_showcerts && got_a_chain))
+					PEM_write_bio_X509(bio, peer);
+				dump_cert_text(bio, peer);
+			} else {
+				BIO_printf(bio, "no peer certificate available\n");
+			}
+			print_ca_names(bio, s);
 
-        ssl_print_sigalgs(bio, s);
-        ssl_print_tmp_key(bio, s);
+			ssl_print_sigalgs(bio, s);
+			ssl_print_tmp_key(bio, s);
 
 #ifndef OPENSSL_NO_CT
-        /*
-         * When the SSL session is anonymous, or resumed via an abbreviated
-         * handshake, no SCTs are provided as part of the handshake.  While in
-         * a resumed session SCTs may be present in the session's certificate,
-         * no callbacks are invoked to revalidate these, and in any case that
-         * set of SCTs may be incomplete.  Thus it makes little sense to
-         * attempt to display SCTs from a resumed session's certificate, and of
-         * course none are associated with an anonymous peer.
-         */
-        if (peer != NULL && !SSL_session_reused(s) && SSL_ct_is_enabled(s)) {
-            const STACK_OF(SCT) *scts = SSL_get0_peer_scts(s);
-            int sct_count = scts != NULL ? sk_SCT_num(scts) : 0;
+			/*
+			 * When the SSL session is anonymous, or resumed via an abbreviated
+			 * handshake, no SCTs are provided as part of the handshake.  While in
+			 * a resumed session SCTs may be present in the session's certificate,
+			 * no callbacks are invoked to revalidate these, and in any case that
+			 * set of SCTs may be incomplete.  Thus it makes little sense to
+			 * attempt to display SCTs from a resumed session's certificate, and of
+			 * course none are associated with an anonymous peer.
+			 */
+			if (peer != NULL && !SSL_session_reused(s) && SSL_ct_is_enabled(s)) {
+				const STACK_OF(SCT) *scts = SSL_get0_peer_scts(s);
+				int sct_count = scts != NULL ? sk_SCT_num(scts) : 0;
 
-            BIO_printf(bio, "---\nSCTs present (%i)\n", sct_count);
-            if (sct_count > 0) {
-                const CTLOG_STORE *log_store = SSL_CTX_get0_ctlog_store(ctx);
+				BIO_printf(bio, "---\nSCTs present (%i)\n", sct_count);
+				if (sct_count > 0) {
+					const CTLOG_STORE *log_store = SSL_CTX_get0_ctlog_store(ctx);
 
-                BIO_printf(bio, "---\n");
-                for (i = 0; i < sct_count; ++i) {
-                    SCT *sct = sk_SCT_value(scts, i);
+					BIO_printf(bio, "---\n");
+					for (i = 0; i < sct_count; ++i) {
+						SCT *sct = sk_SCT_value(scts, i);
 
-                    BIO_printf(bio, "SCT validation status: %s\n",
-                               SCT_validation_status_string(sct));
-                    SCT_print(sct, bio, 0, log_store);
-                    if (i < sct_count - 1)
-                        BIO_printf(bio, "\n---\n");
-                }
-                BIO_printf(bio, "\n");
-            }
-        }
+						BIO_printf(bio, "SCT validation status: %s\n",
+								   SCT_validation_status_string(sct));
+						SCT_print(sct, bio, 0, log_store);
+						if (i < sct_count - 1)
+							BIO_printf(bio, "\n---\n");
+					}
+					BIO_printf(bio, "\n");
+				}
+			}
 #endif
 
-        BIO_printf(bio,
-                   "---\nSSL handshake has read %ju bytes "
-                   "and written %ju bytes\n",
-                   BIO_number_read(SSL_get_rbio(s)),
-                   BIO_number_written(SSL_get_wbio(s)));
+			BIO_printf(bio,
+					   "---\nSSL handshake has read %ju bytes "
+					   "and written %ju bytes\n",
+					   BIO_number_read(SSL_get_rbio(s)),
+					   BIO_number_written(SSL_get_wbio(s)));
+    	}
     }
     print_verify_detail(s, bio);
     BIO_printf(bio, (SSL_session_reused(s) ? "---\nReused, " : "---\nNew, "));
     c = SSL_get_current_cipher(s);
     BIO_printf(bio, "%s, Cipher is %s\n",
                SSL_CIPHER_get_version(c), SSL_CIPHER_get_name(c));
-    if (peer != NULL) {
+    if (!is_did_handshake(s) &&  peer != NULL) {
         EVP_PKEY *pktmp;
 
         pktmp = X509_get0_pubkey(peer);
         BIO_printf(bio, "Server public key is %d bit\n",
                    EVP_PKEY_get_bits(pktmp));
+    } else {
+    	EVP_PKEY *pktmp;
+    	pktmp = SSL_get0_peer_did(s);
+    	BIO_printf(bio, "Server DID public key is %d bit\n",
+    	                   EVP_PKEY_get_bits(pktmp));
     }
     BIO_printf(bio, "Secure Renegotiation IS%s supported\n",
                SSL_get_secure_renegotiation_support(s) ? "" : " NOT");

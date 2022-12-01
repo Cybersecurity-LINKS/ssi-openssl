@@ -21,6 +21,7 @@
 #include <openssl/async.h>
 #include <openssl/ct.h>
 #include <openssl/trace.h>
+#include <ssl/ssl_local_did.h>
 #include "internal/cryptlib.h"
 #include "internal/refcount.h"
 #include "internal/ktls.h"
@@ -725,6 +726,10 @@ SSL *SSL_new(SSL_CTX *ctx)
     if (s->cert == NULL)
         goto err;
 
+	s->did = ssl_did_dup(ctx->did);
+	if (s->did == NULL)
+		goto err;
+
     RECORD_LAYER_set_read_ahead(&s->rlayer, ctx->read_ahead);
     s->msg_callback = ctx->msg_callback;
     s->msg_callback_arg = ctx->msg_callback_arg;
@@ -790,6 +795,17 @@ SSL *SSL_new(SSL_CTX *ctx)
         }
         s->ext.supportedgroups_len = ctx->ext.supportedgroups_len;
     }
+	if (ctx->ext.supporteddidmethods) {
+		s->ext.supporteddidmethods = OPENSSL_memdup(
+				ctx->ext.supporteddidmethods,
+				ctx->ext.supporteddidmethods_len
+						* sizeof(*ctx->ext.supporteddidmethods));
+		if (!s->ext.supporteddidmethods) {
+			s->ext.supporteddidmethods_len = 0;
+			goto err;
+		}
+		s->ext.supporteddidmethods_len = ctx->ext.supporteddidmethods_len;
+	}
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
     s->ext.npn = NULL;
@@ -3256,6 +3272,9 @@ SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
     if ((ret->cert = ssl_cert_new()) == NULL)
         goto err;
 
+    if((ret->did = ssl_did_new()) == NULL)
+        	goto err;
+
     ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
     if (ret->sessions == NULL)
         goto err;
@@ -3278,6 +3297,9 @@ SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (!ssl_load_groups(ret))
         goto err2;
+
+//    if(!ssl_load_supported_did_methods(ret))
+//    	goto err2;
 
     if (!SSL_CTX_set_ciphersuites(ret, OSSL_default_ciphersuites()))
         goto err;

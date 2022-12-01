@@ -277,6 +277,7 @@ typedef int (*tls_session_secret_cb_fn)(SSL *s, void *secret, int *secret_len,
 #define SSL_EXT_TLS1_3_CERTIFICATE              0x1000
 #define SSL_EXT_TLS1_3_NEW_SESSION_TICKET       0x2000
 #define SSL_EXT_TLS1_3_CERTIFICATE_REQUEST      0x4000
+#define SSL_EXT_TLS1_3_DID_REQUEST				0x8000
 
 /* Typedefs for handling custom extensions */
 
@@ -791,6 +792,7 @@ __owur int SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
 
 __owur int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const unsigned char *protos,
                                    unsigned int protos_len);
+__owur int SSL_CTX_set_did_methods(SSL_CTX *ctx, const char *did_methods);
 __owur int SSL_set_alpn_protos(SSL *ssl, const unsigned char *protos,
                                unsigned int protos_len);
 typedef int (*SSL_CTX_alpn_select_cb_func)(SSL *ssl,
@@ -1038,7 +1040,17 @@ typedef enum {
     TLS_ST_EARLY_DATA,
     TLS_ST_PENDING_EARLY_DATA_END,
     TLS_ST_CW_END_OF_EARLY_DATA,
-    TLS_ST_SR_END_OF_EARLY_DATA
+    TLS_ST_SR_END_OF_EARLY_DATA,
+    TLS_ST_SW_DID_REQ,
+    TLS_ST_SW_DID,
+    TLS_ST_SW_DID_VRFY,
+    TLS_ST_SR_DID,
+    TLS_ST_SR_DID_VRFY,
+    TLS_ST_CR_DID_REQ,
+	TLS_ST_CR_DID,
+	TLS_ST_CR_DID_VRFY,
+	TLS_ST_CW_DID,
+	TLS_ST_CW_DID_VRFY
 } OSSL_HANDSHAKE_STATE;
 
 /*
@@ -1740,6 +1752,10 @@ OSSL_DEPRECATEDIN_3_0
 __owur int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const unsigned char *d,
                                           long len);
 # endif
+
+__owur EVP_PKEY *SSL_get0_peer_did(const SSL *s);
+__owur int is_did_handshake(const SSL *s);
+__owur int SSL_CTX_use_did_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, char *did);
 __owur int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
 __owur int SSL_CTX_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx,
                                        const unsigned char *d, long len);

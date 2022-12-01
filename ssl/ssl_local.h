@@ -587,7 +587,9 @@ struct ssl_session_st {
     X509 *peer;
     /* Certificate chain peer sent. */
     STACK_OF(X509) *peer_chain;
-    /*
+	/*This is the public key of the did document of the other end */
+	EVP_PKEY *peer_did_pubkey;
+	/*
      * when app_verify_callback accepts a session where the peer's
      * certificate is not ok, we must remember the error for session reuse:
      */
@@ -767,6 +769,7 @@ typedef enum tlsext_index_en {
     TLSEXT_IDX_early_data,
     TLSEXT_IDX_certificate_authorities,
     TLSEXT_IDX_padding,
+	TLSEXT_IDX_supported_did_methods,
     TLSEXT_IDX_psk,
     /* Dummy index - must always be the last entry */
     TLSEXT_IDX_num_builtins
@@ -974,6 +977,8 @@ struct ssl_ctx_st {
     size_t max_cert_list;
 
     struct cert_st /* CERT */ *cert;
+    struct did_st /* DID */ *did;
+
     int read_ahead;
 
     /* callback that allows applications to peek at protocol messages */
@@ -1069,6 +1074,11 @@ struct ssl_ctx_st {
 
         uint16_t *supported_groups_default;
         size_t supported_groups_default_len;
+
+        size_t supporteddidmethods_len;
+        /* our list */
+        uint8_t *supporteddidmethods;
+
         /*
          * ALPN information (we are in the process of transitioning from NPN to
          * ALPN.)
@@ -1208,6 +1218,10 @@ struct ssl_ctx_st {
 };
 
 typedef struct cert_pkey_st CERT_PKEY;
+typedef struct did_pkey_st DID_PKEY;
+
+#define CERTIFICATE_AUTHN 0
+#define DID_AUTHN 1
 
 struct ssl_st {
     /*
@@ -1215,6 +1229,10 @@ struct ssl_st {
      * DTLS1_VERSION)
      */
     int version;
+
+#ifndef OPENSSL_NO_TLS1_3
+    uint8_t auth_method;
+#endif
     /* SSLv3 */
     const SSL_METHOD *method;
     /*
@@ -1316,6 +1334,8 @@ struct ssl_st {
             EVP_PKEY *pkey;         /* holds short lived key exchange key */
             /* used for certificate requests */
             int cert_req;
+            /* used for did requests */
+            int did_req;
             /* Certificate types in certificate request message. */
             uint8_t *ctype;
             size_t ctype_len;
@@ -1332,6 +1352,7 @@ struct ssl_st {
 # else
             char *new_compression;
 # endif
+            int did_request;
             int cert_request;
             /* Raw values of the cipher list from a client */
             unsigned char *ciphers_raw;
@@ -1348,6 +1369,8 @@ struct ssl_st {
             const struct sigalg_lookup_st *sigalg;
             /* Pointer to certificate we use */
             CERT_PKEY *cert;
+            /* Pointer to did we use */
+            DID_PKEY *did;
             /*
              * signature algorithms peer reports: e.g. supported signature
              * algorithms extension for server or as part of a certificate
@@ -1414,6 +1437,8 @@ struct ssl_st {
         size_t alpn_proposed_len;
         /* used by the client to know if it actually sent alpn */
         int alpn_sent;
+        /* used by the client to know if it actually sent did */
+        int did_sent;
 
         /*
          * This is set to true if we believe that this is a version of Safari
@@ -1482,6 +1507,7 @@ struct ssl_st {
     /* client cert? */
     /* This is used to hold the server certificate used */
     struct cert_st /* CERT */ *cert;
+    struct did_st *did;
 
     /*
      * The hash of all messages prior to the CertificateVerify, and the length
@@ -1489,6 +1515,13 @@ struct ssl_st {
      */
     unsigned char cert_verify_hash[EVP_MAX_MD_SIZE];
     size_t cert_verify_hash_len;
+
+	/*
+	 * The hash of all messages prior to the DidVerify, and the length
+	 * of that hash.
+	 */
+	unsigned char did_verify_hash[EVP_MAX_MD_SIZE];
+	size_t did_verify_hash_len;
 
     /* Flag to indicate whether we should send a HelloRetryRequest or not */
     enum {SSL_HRR_NONE = 0, SSL_HRR_PENDING, SSL_HRR_COMPLETE}
@@ -1621,6 +1654,14 @@ struct ssl_st {
         size_t peer_supportedgroups_len;
          /* peer's list */
         uint16_t *peer_supportedgroups;
+
+		size_t supporteddidmethods_len;
+		/* our list */
+		uint8_t *supporteddidmethods;
+
+		size_t peer_supporteddidmethods_len;
+		/* peer's list */
+		uint8_t *peer_supporteddidmethods;
 
         /* TLS Session Ticket extension override */
         TLS_SESSION_TICKET_EXT *session_ticket;
@@ -1953,6 +1994,16 @@ struct cert_pkey_st {
     unsigned char *serverinfo;
     size_t serverinfo_length;
 };
+
+struct did_pkey_st {
+	/* ott_buf */ unsigned char *did;
+	size_t did_len;
+	/*unsigned char *did_method;
+	size_t did_method_len;*/
+	uint8_t did_method;
+	EVP_PKEY *privatekey;
+};
+
 /* Retrieve Suite B flags */
 # define tls1_suiteb(s)  (s->cert->cert_flags & SSL_CERT_FLAG_SUITEB_128_LOS)
 /* Uses to check strict mode: suite B modes are always strict */
@@ -2067,6 +2118,13 @@ typedef struct cert_st {
     CRYPTO_REF_COUNT references;             /* >1 only if SSL_copy_session_id is used */
     CRYPTO_RWLOCK *lock;
 } CERT;
+
+typedef struct did_st {
+	DID_PKEY *key;
+	DID_PKEY pkeys[SSL_PKEY_NUM];
+	/*CRYPTO_REF_COUNT references;             >1 only if SSL_copy_session_id is used */
+	/*CRYPTO_RWLOCK *lock;*/
+} DID;
 
 # define FP_ICC  (int (*)(const void *,const void *))
 

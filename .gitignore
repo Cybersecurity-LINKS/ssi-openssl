@@ -237,3 +237,10 @@ MAKE0[0-9][0-9][0-9].@@@
 # Windows manifest files
 *.manifest
 doc-nits
+
+# This should be Eclipse stuff
+.idea/
+.settings/
+.metadata/
+.project
+.cproject

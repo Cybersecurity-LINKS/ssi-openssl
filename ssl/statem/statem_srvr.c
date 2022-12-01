@@ -26,6 +26,8 @@
 #include <openssl/trace.h>
 #include <openssl/core_names.h>
 #include <openssl/asn1t.h>
+#include <ssl/ssl_local_did.h>
+#include "statem_local_did.h"
 
 #define TICKET_NONCE_SIZE       8
 
@@ -85,12 +87,18 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
 
     case TLS_ST_SR_END_OF_EARLY_DATA:
     case TLS_ST_SW_FINISHED:
-        if (s->s3.tmp.cert_request) {
+        if (s->auth_method == CERTIFICATE_AUTHN && s->s3.tmp.cert_request) {
             if (mt == SSL3_MT_CERTIFICATE) {
                 st->hand_state = TLS_ST_SR_CERT;
                 return 1;
             }
-        } else {
+        } else if (s->auth_method == DID_AUTHN && s->s3.tmp.did_request) {
+			if (mt == SSL3_MT_DID) {
+				st->hand_state = TLS_ST_SR_DID;
+				return 1;
+			}
+		}
+        else {
             if (mt == SSL3_MT_FINISHED) {
                 st->hand_state = TLS_ST_SR_FINISHED;
                 return 1;
@@ -112,12 +120,32 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
         }
         break;
 
+	case TLS_ST_SR_DID:
+		if (s->session->peer_did_pubkey == NULL) {
+			if (mt == SSL3_MT_FINISHED) {
+				st->hand_state = TLS_ST_SR_FINISHED;
+				return 1;
+			}
+		} else {
+			if (mt == SSL3_MT_DID_VERIFY) {
+				st->hand_state = TLS_ST_SR_DID_VRFY;
+				return 1;
+			}
+		}
+
     case TLS_ST_SR_CERT_VRFY:
         if (mt == SSL3_MT_FINISHED) {
             st->hand_state = TLS_ST_SR_FINISHED;
             return 1;
         }
         break;
+
+    case TLS_ST_SR_DID_VRFY:
+		if (mt == SSL3_MT_FINISHED) {
+			st->hand_state = TLS_ST_SR_FINISHED;
+			return 1;
+		}
+		break;
 
     case TLS_ST_OK:
         /*
@@ -464,10 +492,15 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
     case TLS_ST_SW_ENCRYPTED_EXTENSIONS:
         if (s->hit)
             st->hand_state = TLS_ST_SW_FINISHED;
-        else if (send_certificate_request(s))
-            st->hand_state = TLS_ST_SW_CERT_REQ;
-        else
-            st->hand_state = TLS_ST_SW_CERT;
+		else if (s->auth_method == CERTIFICATE_AUTHN
+				&& send_certificate_request(s))
+			st->hand_state = TLS_ST_SW_CERT_REQ;
+		else if (s->auth_method == CERTIFICATE_AUTHN)
+			st->hand_state = TLS_ST_SW_CERT;
+		else if (s->auth_method == DID_AUTHN && send_did_request(s))
+			st->hand_state = TLS_ST_SW_DID_REQ;
+		else
+			st->hand_state = TLS_ST_SW_DID;
 
         return WRITE_TRAN_CONTINUE;
 
@@ -480,13 +513,25 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
         }
         return WRITE_TRAN_CONTINUE;
 
+	case TLS_ST_SW_DID_REQ:
+		st->hand_state = TLS_ST_SW_DID;
+		return WRITE_TRAN_CONTINUE;
+
     case TLS_ST_SW_CERT:
         st->hand_state = TLS_ST_SW_CERT_VRFY;
         return WRITE_TRAN_CONTINUE;
 
+    case TLS_ST_SW_DID:
+		st->hand_state = TLS_ST_SW_DID_VRFY;
+		return WRITE_TRAN_CONTINUE;
+
     case TLS_ST_SW_CERT_VRFY:
         st->hand_state = TLS_ST_SW_FINISHED;
         return WRITE_TRAN_CONTINUE;
+
+    case TLS_ST_SW_DID_VRFY:
+		st->hand_state = TLS_ST_SW_FINISHED;
+		return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_SW_FINISHED:
         st->hand_state = TLS_ST_EARLY_DATA;
@@ -1054,11 +1099,20 @@ int ossl_statem_server_construct_message(SSL *s, WPACKET *pkt,
         *mt = SSL3_MT_CERTIFICATE;
         break;
 
+	case TLS_ST_SW_DID:
+		*confunc = tls_construct_server_did;
+		*mt = SSL3_MT_DID;
+		break;
+
     case TLS_ST_SW_CERT_VRFY:
         *confunc = tls_construct_cert_verify;
         *mt = SSL3_MT_CERTIFICATE_VERIFY;
         break;
 
+	case TLS_ST_SW_DID_VRFY:
+		*confunc = tls_construct_did_verify;
+		*mt = SSL3_MT_DID_VERIFY;
+		break;
 
     case TLS_ST_SW_KEY_EXCH:
         *confunc = tls_construct_server_key_exchange;
@@ -1069,6 +1123,11 @@ int ossl_statem_server_construct_message(SSL *s, WPACKET *pkt,
         *confunc = tls_construct_certificate_request;
         *mt = SSL3_MT_CERTIFICATE_REQUEST;
         break;
+
+    case TLS_ST_SW_DID_REQ:
+		*confunc = tls_construct_did_request;
+		*mt = SSL3_MT_DID_REQUEST;
+		break;
 
     case TLS_ST_SW_SRVR_DONE:
         *confunc = tls_construct_server_done;
@@ -1151,11 +1210,17 @@ size_t ossl_statem_server_max_message_size(SSL *s)
     case TLS_ST_SR_CERT:
         return s->max_cert_list;
 
+    case TLS_ST_SR_DID:
+    	return SSL3_RT_MAX_PLAIN_LENGTH;
+
     case TLS_ST_SR_KEY_EXCH:
         return CLIENT_KEY_EXCH_MAX_LENGTH;
 
     case TLS_ST_SR_CERT_VRFY:
         return SSL3_RT_MAX_PLAIN_LENGTH;
+
+    case TLS_ST_SR_DID_VRFY:
+    	return SSL3_RT_MAX_PLAIN_LENGTH;
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
     case TLS_ST_SR_NEXT_PROTO:
@@ -1195,11 +1260,17 @@ MSG_PROCESS_RETURN ossl_statem_server_process_message(SSL *s, PACKET *pkt)
     case TLS_ST_SR_CERT:
         return tls_process_client_certificate(s, pkt);
 
+    case TLS_ST_SR_DID:
+    		return tls_process_client_did(s, pkt);
+
     case TLS_ST_SR_KEY_EXCH:
         return tls_process_client_key_exchange(s, pkt);
 
     case TLS_ST_SR_CERT_VRFY:
         return tls_process_cert_verify(s, pkt);
+
+    case TLS_ST_SR_DID_VRFY:
+    		return tls_process_did_verify(s, pkt);
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
     case TLS_ST_SR_NEXT_PROTO:
@@ -2035,6 +2106,11 @@ static int tls_early_post_process_client_hello(SSL *s)
             /* SSLfatal() already called */
             goto err;
         }
+
+		if (SSL_IS_TLS13(s) && !tls13_set_server_did_methods(s)) {
+			/*SSLfatal() already called*/
+			goto err;
+		}
     }
 
     sk_SSL_CIPHER_free(ciphers);
@@ -2224,10 +2300,15 @@ WORK_STATE tls_post_process_client_hello(SSL *s, WORK_STATE wst)
                 s->s3.tmp.new_cipher = cipher;
             }
             if (!s->hit) {
-                if (!tls_choose_sigalg(s, 1)) {
+                if (s->auth_method == CERTIFICATE_AUTHN
+						&& !tls_choose_sigalg(s, 1)) {
                     /* SSLfatal already called */
                     goto err;
-                }
+                } else if (s->auth_method == DID_AUTHN
+						&& !tls_choose_did_sigalg(s, 1)) {
+					/* SSLfatal already called */
+					goto err;
+				}
                 /* check whether we should disable session resumption */
                 if (s->not_resumable_session_cb != NULL)
                     s->session->not_resumable =

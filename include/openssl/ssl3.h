@@ -317,6 +317,10 @@ extern "C" {
 # define SSL3_MT_CERTIFICATE_STATUS              22
 # define SSL3_MT_SUPPLEMENTAL_DATA               23
 # define SSL3_MT_KEY_UPDATE                      24
+# define SSL3_MT_DID							 30
+# define SSL3_MT_DID_REQUEST					 31
+# define SSL3_MT_DID_VERIFY              		 32
+
 # ifndef OPENSSL_NO_NEXTPROTONEG
 #  define SSL3_MT_NEXT_PROTO                     67
 # endif

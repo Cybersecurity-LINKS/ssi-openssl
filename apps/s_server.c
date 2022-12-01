@@ -721,7 +721,9 @@ typedef enum OPTION_choice {
     OPT_S_ENUM,
     OPT_V_ENUM,
     OPT_X_ENUM,
-    OPT_PROV_ENUM
+    OPT_PROV_ENUM,
+	OPT_DID,
+	OPT_DID_METHODS
 } OPTION_CHOICE;
 
 const OPTIONS s_server_options[] = {
@@ -960,7 +962,10 @@ const OPTIONS s_server_options[] = {
 #ifndef OPENSSL_NO_KTLS
     {"sendfile", OPT_SENDFILE, '-', "Use sendfile to response file with -WWW"},
 #endif
-
+	{ "did", OPT_DID, 's',
+			"Set the server did to send to the client" },
+	{ "did_methods", OPT_DID_METHODS, 's',
+			"list of did methods supported by the server (comma-separated list)" },
     OPT_R_OPTIONS,
     OPT_S_OPTIONS,
     OPT_V_OPTIONS,
@@ -975,6 +980,7 @@ const OPTIONS s_server_options[] = {
 
 int s_server_main(int argc, char *argv[])
 {
+	EVP_PKEY *did_pkey = NULL;
     ENGINE *engine = NULL;
     EVP_PKEY *s_key = NULL, *s_dkey = NULL;
     SSL_CONF_CTX *cctx = NULL;
@@ -1053,6 +1059,8 @@ int s_server_main(int argc, char *argv[])
     int sctp_label_bug = 0;
 #endif
     int ignore_unexpected_eof = 0;
+    char *did = NULL;
+    const char *did_methods = NULL;
 
     /* Init of few remaining global variables */
     local_argc = argc;
@@ -1642,6 +1650,12 @@ int s_server_main(int argc, char *argv[])
         case OPT_IGNORE_UNEXPECTED_EOF:
             ignore_unexpected_eof = 1;
             break;
+		case OPT_DID:
+			did = opt_arg();
+			break;
+		case OPT_DID_METHODS:
+			did_methods = opt_arg();
+			break;
         }
     }
 
@@ -1751,6 +1765,10 @@ int s_server_main(int argc, char *argv[])
                 goto end;
         }
     }
+
+    if (did)
+		did_pkey = load_key("apps/my_keys/server_did_pkey.pem", 0, 0, NULL,
+		NULL, "server did private key");
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
     if (next_proto_neg_in) {
         next_proto.data = next_protos_parse(&next_proto.len, next_proto_neg_in);
@@ -2086,6 +2104,17 @@ int s_server_main(int argc, char *argv[])
 
     if (!set_cert_key_stuff(ctx, s_cert, s_key, s_chain, build_chain))
         goto end;
+
+    if (did)
+		if (!set_did_key_stuff(ctx, did_pkey, did))
+			goto end;
+
+	if (did_methods) {
+		if (!SSL_CTX_set_did_methods(ctx, did_methods)) {
+			BIO_printf(bio_err, "Error setting did_methods\n");
+			goto end;
+		}
+	}
 
     if (s_serverinfo_file != NULL
         && !SSL_CTX_use_serverinfo_file(ctx, s_serverinfo_file)) {
