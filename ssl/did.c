@@ -228,7 +228,7 @@ static const SIGALG_LOOKUP* find_did_sig_alg(SSL *s) { /* I don't add X_509 and 
 		if (!has_usable_did(s, lu, -1))
 			continue;
 
-		tmppkey = s->cert->pkeys[lu->sig_idx].privatekey;
+		tmppkey = s->did->pkeys[lu->sig_idx].privatekey;
 
 		if (lu->sig == EVP_PKEY_EC) {
 			if (curve == -1)

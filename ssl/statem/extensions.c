@@ -872,7 +872,8 @@ int tls_construct_extensions(SSL *s, WPACKET *pkt, unsigned int context,
         if (ret == EXT_RETURN_SENT
                 && (context & (SSL_EXT_CLIENT_HELLO
                                | SSL_EXT_TLS1_3_CERTIFICATE_REQUEST
-                               | SSL_EXT_TLS1_3_NEW_SESSION_TICKET)) != 0)
+                               | SSL_EXT_TLS1_3_NEW_SESSION_TICKET
+							   | SSL_EXT_TLS1_3_DID_REQUEST)) != 0)
             s->ext.extflags[i] |= SSL_EXT_FLAG_SENT;
     }
 

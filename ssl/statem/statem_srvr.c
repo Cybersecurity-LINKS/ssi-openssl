@@ -132,6 +132,7 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
 				return 1;
 			}
 		}
+		break;
 
     case TLS_ST_SR_CERT_VRFY:
         if (mt == SSL3_MT_FINISHED) {

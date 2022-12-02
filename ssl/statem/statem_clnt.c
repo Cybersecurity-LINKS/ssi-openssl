@@ -494,10 +494,10 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
     				st->hand_state =
     						(s->s3.tmp.cert_req != 0) ?
     								TLS_ST_CW_CERT : TLS_ST_CW_FINISHED;
-    			else
-    				st->hand_state =
-    						(s->s3.tmp.did_req != 0) ?
-    								TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
+		else
+			st->hand_state =
+					(s->s3.tmp.did_req != 0) ?
+							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_CW_CERT:
