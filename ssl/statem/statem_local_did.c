@@ -439,7 +439,7 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 		return MSG_PROCESS_ERROR;
 	}
 
-	/* Check client did compatibility towards the did methods provided by the server */
+	/* Check client did compatibility towards did methods provided by the server */
 	if (!tls1_process_supported_did_methods(s)){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_BAD_LENGTH);
 		return MSG_PROCESS_ERROR;
@@ -499,7 +499,7 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 	}
 
 	if(resolve_(didDocument, (char *)server_did) != DID_RESOLVE_OK){
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -739,7 +739,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	}
 
 	if (resolve_(didDocument, (char*) client_did) != DID_RESOLVE_OK){
-		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
 		return MSG_PROCESS_ERROR;
 	}
 
