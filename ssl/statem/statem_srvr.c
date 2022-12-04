@@ -2108,10 +2108,13 @@ static int tls_early_post_process_client_hello(SSL *s)
             goto err;
         }
 
-		if (SSL_IS_TLS13(s) && !tls13_set_server_did_methods(s)) {
-			/*SSLfatal() already called*/
-			goto err;
-		}
+		if (SSL_IS_TLS13(s)) {
+			if(!tls13_set_server_did_methods(s)){
+				/*SSLfatal() already called*/
+				goto err;
+			}
+		} else
+			s->auth_method = CERTIFICATE_AUTHN;
     }
 
     sk_SSL_CIPHER_free(ciphers);

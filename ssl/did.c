@@ -520,6 +520,6 @@ int is_did_handshake(const SSL *s){
 	if(s == NULL)
 		return 0;
 
-	return s->s3.did_sent;
+	return s->s3.did_sent && SSL_IS_TLS13(s);
 }
 
