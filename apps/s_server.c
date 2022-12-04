@@ -72,8 +72,8 @@ static void print_connection_info(SSL *con);
 static const int bufsize = 16 * 1024;
 static int accept_socket = -1;
 
-#define TEST_CERT       "server.pem"
-#define TEST_CERT2      "server2.pem"
+#define TEST_CERT       "apps/server.pem"
+#define TEST_CERT2      "apps/server2.pem"
 
 static int s_nbio = 0;
 static int s_nbio_test = 0;

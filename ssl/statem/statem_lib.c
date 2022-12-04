@@ -20,6 +20,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/trace.h>
+#include <ssl/ssl_local_did.h>
 
 /*
  * Map error codes to TLS/SSL alart types.
@@ -181,6 +182,7 @@ int tls_setup_handshake(SSL *s)
             ssl_tsan_counter(s->ctx, &s->ctx->stats.sess_accept_renegotiate);
 
             s->s3.tmp.cert_request = 0;
+            s->s3.tmp.did_request = 0;
         }
     } else {
         if (SSL_IS_FIRST_HANDSHAKE(s))
@@ -197,6 +199,7 @@ int tls_setup_handshake(SSL *s)
 
         if (SSL_IS_DTLS(s))
             s->statem.use_timer = 1;
+        	s->s3.tmp.did_request = 0;
     }
 
     return 1;
@@ -578,6 +581,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
     if (SSL_IS_TLS13(s)
             && !s->server
             && s->s3.tmp.cert_req == 0
+			&& s->s3.tmp.did_req == 0
             && (!s->method->ssl3_enc->change_cipher_state(s,
                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE))) {;
         /* SSLfatal() already called */
@@ -1551,7 +1555,7 @@ static int is_tls13_capable(const SSL *s)
         default:
             break;
         }
-        if (!ssl_has_cert(s, i))
+        if (!ssl_has_cert(s, i) && !ssl_has_did(s, i))
             continue;
         if (i != SSL_PKEY_ECC)
             return 1;
