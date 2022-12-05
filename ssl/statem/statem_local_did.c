@@ -629,7 +629,7 @@ EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt,
 	/* Sub-packet for sig-algs extension */
 	|| !WPACKET_start_sub_packet_u16(pkt)
 	/* Sub-packet for the actual list */
-	|| !WPACKET_sub_memcpy_u8(pkt, s->ext.supporteddidmethods, s->ext.supporteddidmethods_len)
+	|| !WPACKET_sub_memcpy_u8(pkt, s->shared_didmethods, s->shared_didmethodslen)
 			|| !WPACKET_close(pkt)) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return EXT_RETURN_FAIL;

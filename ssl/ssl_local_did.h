@@ -14,6 +14,7 @@
 /* supported did methods values */
 #define TLSEXT_DID_METHOD_ott			0x01
 #define TLSEXT_DID_METHOD_btc			0x02
+#define TLSEXT_DID_METHOD_eth 			0x03
 
 /* Structure containing table entry of values associated with the
 supported did methods extension */

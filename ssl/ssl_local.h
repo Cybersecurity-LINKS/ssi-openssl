@@ -1840,6 +1840,13 @@ struct ssl_st {
      */
     const struct sigalg_lookup_st **shared_sigalgs;
     size_t shared_sigalgslen;
+
+    /*
+	 * Signature algorithms shared by client and server: cached because these
+	 * are used most often.
+	 */
+    uint8_t *shared_didmethods;
+    size_t shared_didmethodslen;
 };
 
 /*

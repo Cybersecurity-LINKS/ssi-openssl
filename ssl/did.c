@@ -13,8 +13,11 @@
 /* static const uint8_t supported_did_methods_default[] = { TLSEXT_DID_METHOD_ott,
 TLSEXT_DID_METHOD_btc }; */
 
-static const DIDMETHOD_LOOKUP didmethods_lookup_tbl[] = { { "ott",
-TLSEXT_DID_METHOD_ott }, { "btc", TLSEXT_DID_METHOD_btc } };
+static const DIDMETHOD_LOOKUP didmethods_lookup_tbl[] = {
+		{ "ott", TLSEXT_DID_METHOD_ott },
+		{ "btc", TLSEXT_DID_METHOD_btc },
+		{ "eth", TLSEXT_DID_METHOD_eth }
+};
 
 /************************************************
  **************** METHODS ***********************
@@ -99,31 +102,84 @@ int SSL_CTX_set_did_methods(SSL_CTX *ctx, const char *did_methods){
 	return 1;
 } */
 
+static int tls13_shared_didmethods(SSL *s, uint8_t **shmethods,
+                                   const uint8_t *pref, size_t preflen,
+                                   const uint8_t *allow, size_t allowlen){
+
+	const uint8_t *ptmp, *atmp;
+	size_t i, j, nmatch = 0;
+
+	for (i = 0, ptmp = pref; i < preflen; i++, ptmp++) {
+		for (j = 0, atmp = allow; j < allowlen; j++, atmp++) {
+			if(*ptmp == *atmp) {
+				nmatch++;
+				if(shmethods){
+					*shmethods++ = ptmp;
+				}
+				break;
+			}
+		}
+	}
+	return nmatch;
+}
+
+static int tls13_set_shared_didmethods(SSL *s){
+
+	uint8_t **shmethods = NULL;
+	size_t nmatch, preflen, allowlen;
+	const uint8_t *pref, *allow;
+
+	OPENSSL_free(s->shared_didmethods);
+	s->shared_didmethods = NULL;
+	s->shared_didmethodslen = 0;
+
+	pref = s->ext.peer_supporteddidmethods;
+	preflen = s->ext.peer_supporteddidmethods_len;
+	allow = s->ext.supporteddidmethods;
+	allowlen = s->ext.supporteddidmethods_len;
+
+	nmatch = tls13_shared_didmethods(s, NULL, pref, preflen, allow, allowlen);
+	if(nmatch){
+		if ((shmethods = OPENSSL_malloc(nmatch * sizeof(*shmethods))) == NULL) {
+			ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
+			return 0;
+		}
+		nmatch = tls13_shared_didmethods(s, shmethods, pref, preflen, allow, allowlen);
+	} else {
+		shmethods = NULL;
+		return 0;
+	}
+	s->shared_didmethods = *shmethods;
+	s->shared_didmethodslen = nmatch;
+	return 1;
+}
+
 /* Check if our did is compatible with one of the did methods sent by the peer */
 static int is_did_method_supported(SSL *s) {
 
 	size_t i, j, k = 0;
 	const DIDMETHOD_LOOKUP *lu;
-	DIDMETHOD_LOOKUP *cache = OPENSSL_malloc(
+	/*DIDMETHOD_LOOKUP *cache = OPENSSL_malloc(
 			sizeof(*lu) * OSSL_NELEM(didmethods_lookup_tbl));
 
 	if (cache == NULL)
-		goto err;
+		goto err;*/
 
 	for (i = 0; i < s->ext.peer_supporteddidmethods_len; i++) {
 		for (j = 0, lu = didmethods_lookup_tbl;
 				j < OSSL_NELEM(didmethods_lookup_tbl); j++, lu++) {
 			if (s->ext.peer_supporteddidmethods[i] == lu->didmethod)
-				cache[k++] = *lu;
+				if (s->did->key->did_method == s->ext.peer_supporteddidmethods[i])
+						return 1;
+				/*cache[k++] = *lu;*/
 		}
 	}
 
-	for (i = 0; i < k; i++)
+	/*for (i = 0; i < k; i++)
 		if (s->did->key->did_method == cache[i].didmethod)
 			return 1;
-
 err:
-	OPENSSL_free(cache);
+	OPENSSL_free(cache);*/
 	return 0;
 }
 
@@ -135,6 +191,7 @@ int tls13_set_server_did_methods(SSL *s) {
 	/* The server does not support did methods or its did is
 	 * not included in the list of did methods sent by the client */
 	} else if (s->ext.supporteddidmethods == NULL
+			|| !tls13_set_shared_didmethods(s)
 			|| !is_did_method_supported(s)) {
 		SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_NO_SHARED_DID_METHODS);
 		return 0;
