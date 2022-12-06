@@ -157,7 +157,7 @@ static int tls13_set_shared_didmethods(SSL *s){
 /* Check if our did is compatible with one of the did methods sent by the peer */
 static int is_did_method_supported(SSL *s) {
 
-	size_t i, j, k = 0;
+	size_t i, j;
 	const DIDMETHOD_LOOKUP *lu;
 	/*DIDMETHOD_LOOKUP *cache = OPENSSL_malloc(
 			sizeof(*lu) * OSSL_NELEM(didmethods_lookup_tbl));
@@ -477,7 +477,7 @@ static int is_did_valid (char *did, int *did_method){
 	char *token;
 	token = strtok(did, ":");
 
-	size_t i = 0;
+	size_t i = 0, j;
 
 	while(token != NULL){
 		switch(i) {
@@ -494,7 +494,6 @@ static int is_did_valid (char *did, int *did_method){
 			}
 			break;
 		case 2:
-			size_t j;
 			for(j = 0; j < strlen(token); j++){
 				if(!isalnum(token[j])){
 					ERR_raise(ERR_LIB_SSL, SSL_R_INVALID_DID);
