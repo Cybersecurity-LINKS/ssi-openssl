@@ -87,12 +87,12 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
 
     case TLS_ST_SR_END_OF_EARLY_DATA:
     case TLS_ST_SW_FINISHED:
-        if (s->auth_method == CERTIFICATE_AUTHN && s->s3.tmp.cert_request) {
+        if (s->ext.supporteddidmethods == NULL && s->s3.tmp.cert_request) {
             if (mt == SSL3_MT_CERTIFICATE) {
                 st->hand_state = TLS_ST_SR_CERT;
                 return 1;
             }
-        } else if (s->auth_method == DID_AUTHN && s->s3.tmp.did_request) {
+        } else if (s->ext.supporteddidmethods != NULL && s->s3.tmp.did_request) {
 			if (mt == SSL3_MT_DID) {
 				st->hand_state = TLS_ST_SR_DID;
 				return 1;
@@ -444,7 +444,7 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
 
     /*
      * No case for TLS_ST_BEFORE, because at that stage we have not negotiated
-     * TLSv1.3 yet, so that is handled by ossl_statem_server_write_transition()
+     * TLSv1.3 yet, so that is handled by ossl_statem_server_cition()
      */
 
     switch (st->hand_state) {
@@ -493,13 +493,17 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
     case TLS_ST_SW_ENCRYPTED_EXTENSIONS:
         if (s->hit)
             st->hand_state = TLS_ST_SW_FINISHED;
-		else if (s->auth_method == CERTIFICATE_AUTHN
+		else if (s->ext.supporteddidmethods != NULL && send_did_request(s))
+		 	 st->hand_state = TLS_ST_SW_DID_REQ;
+		else if (s->ext.supporteddidmethods == NULL && send_certificate_request(s))
+		 	 st->hand_state = TLS_ST_SW_CERT_REQ;
+		/*else if (s->auth_method == CERTIFICATE_AUTHN
 				&& send_certificate_request(s))
-			st->hand_state = TLS_ST_SW_CERT_REQ;
+			st->hand_state = TLS_ST_SW_CERT_REQ;*/
 		else if (s->auth_method == CERTIFICATE_AUTHN)
 			st->hand_state = TLS_ST_SW_CERT;
-		else if (s->auth_method == DID_AUTHN && send_did_request(s))
-			st->hand_state = TLS_ST_SW_DID_REQ;
+		/*else if (s->auth_method == DID_AUTHN && send_did_request(s))
+			st->hand_state = TLS_ST_SW_DID_REQ;*/
 		else
 			st->hand_state = TLS_ST_SW_DID;
 
@@ -509,13 +513,18 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
         if (s->post_handshake_auth == SSL_PHA_REQUEST_PENDING) {
             s->post_handshake_auth = SSL_PHA_REQUESTED;
             st->hand_state = TLS_ST_OK;
+        } else if(s->auth_method == DID_AUTHN) {
+        	st->hand_state = TLS_ST_SW_DID;
         } else {
             st->hand_state = TLS_ST_SW_CERT;
         }
         return WRITE_TRAN_CONTINUE;
 
 	case TLS_ST_SW_DID_REQ:
-		st->hand_state = TLS_ST_SW_DID;
+		if(s->auth_method == DID_AUTHN)
+			st->hand_state = TLS_ST_SW_DID;
+		else
+			st->hand_state = TLS_ST_SW_CERT;
 		return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_SW_CERT:
@@ -2109,6 +2118,7 @@ static int tls_early_post_process_client_hello(SSL *s)
         }
 
 		if (SSL_IS_TLS13(s)) {
+			/*s->auth_method = DID_AUTHN;*/
 			if(!tls13_set_server_did_methods(s)){
 				/*SSLfatal() already called*/
 				goto err;

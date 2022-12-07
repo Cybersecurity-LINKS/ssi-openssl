@@ -185,19 +185,32 @@ err:
 
 int tls13_set_server_did_methods(SSL *s) {
 
-	if (s->ext.peer_supporteddidmethods == NULL) { /* the client did not send the supported did methods extension */
+//	if (s->ext.peer_supporteddidmethods == NULL) { /* the client did not send the supported did methods extension */
+//		s->auth_method = CERTIFICATE_AUTHN;
+//		return 1;
+//	/* The server does not support did methods or its did is
+//	 * not included in the list of did methods sent by the client */
+//	} else if (s->ext.supporteddidmethods == NULL
+//			|| !tls13_set_shared_didmethods(s)
+//			|| !is_did_method_supported(s)) {
+//		SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_NO_SHARED_DID_METHODS);
+//		return 0;
+//	} else {
+//		s->auth_method = DID_AUTHN;
+//		return 1;
+//	}
+
+	if(s->ext.peer_supporteddidmethods == NULL) {
 		s->auth_method = CERTIFICATE_AUTHN;
 		return 1;
-	/* The server does not support did methods or its did is
-	 * not included in the list of did methods sent by the client */
-	} else if (s->ext.supporteddidmethods == NULL
-			|| !tls13_set_shared_didmethods(s)
-			|| !is_did_method_supported(s)) {
+	} else if (is_did_method_supported(s)){
+		s->auth_method = DID_AUTHN;
+		if(s->ext.supporteddidmethods != NULL)
+			tls13_set_shared_didmethods(s);
+		return 1;
+	} else {
 		SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_NO_SHARED_DID_METHODS);
 		return 0;
-	} else {
-		s->auth_method = DID_AUTHN;
-		return 1;
 	}
 }
 

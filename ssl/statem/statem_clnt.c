@@ -151,9 +151,17 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
             st->hand_state = TLS_ST_CR_CERT;
             return 1;
         }
+		if (mt == SSL3_MT_DID) {
+			st->hand_state = TLS_ST_CR_DID;
+			return 1;
+		}
         break;
 
     case TLS_ST_CR_DID_REQ:
+    	if (mt == SSL3_MT_CERTIFICATE){
+    		st->hand_state = TLS_ST_CR_CERT;
+    		return 1;
+    	}
 		if (mt == SSL3_MT_DID) {
 			st->hand_state = TLS_ST_CR_DID;
 			return 1;
@@ -472,7 +480,7 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
         else if ((s->options & SSL_OP_ENABLE_MIDDLEBOX_COMPAT) != 0
                  && s->hello_retry_request == SSL_HRR_NONE)
             st->hand_state = TLS_ST_CW_CHANGE;
-        else if (!s->s3.did_sent)
+        else if (s->auth_method == CERTIFICATE_AUTHN)
             st->hand_state = (s->s3.tmp.cert_req != 0) ? TLS_ST_CW_CERT
                                                         : TLS_ST_CW_FINISHED;
         else
@@ -490,7 +498,7 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
 
     case TLS_ST_CW_END_OF_EARLY_DATA:
     case TLS_ST_CW_CHANGE:
-    	if(!s->s3.did_sent)
+    	if(s->auth_method == CERTIFICATE_AUTHN)
     				st->hand_state =
     						(s->s3.tmp.cert_req != 0) ?
     								TLS_ST_CW_CERT : TLS_ST_CW_FINISHED;
@@ -1118,7 +1126,7 @@ MSG_PROCESS_RETURN ossl_statem_client_process_message(SSL *s, PACKET *pkt)
         return tls_process_certificate_request(s, pkt);
 
     case TLS_ST_CR_DID_REQ:
-    		return tls_process_did_request(s, pkt);
+    	return tls_process_did_request(s, pkt);
 
     case TLS_ST_CR_SRVR_DONE:
         return tls_process_server_done(s, pkt);
@@ -2413,6 +2421,7 @@ MSG_PROCESS_RETURN tls_process_certificate_request(SSL *s, PACKET *pkt)
 {
     size_t i;
 
+    s->auth_method = CERTIFICATE_AUTHN;
     /* Clear certificate validity flags */
     for (i = 0; i < SSL_PKEY_NUM; i++)
         s->s3.tmp.valid_flags[i] = 0;
