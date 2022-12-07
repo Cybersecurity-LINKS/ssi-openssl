@@ -1108,13 +1108,13 @@ MSG_PROCESS_RETURN ossl_statem_client_process_message(SSL *s, PACKET *pkt)
         return tls_process_server_certificate(s, pkt);
 
     case TLS_ST_CR_DID:
-    		return tls_process_server_did(s, pkt);
+    	return tls_process_server_did(s, pkt);
 
     case TLS_ST_CR_CERT_VRFY:
         return tls_process_cert_verify(s, pkt);
 
     case TLS_ST_CR_DID_VRFY:
-    		return tls_process_did_verify(s, pkt);
+    	return tls_process_did_verify(s, pkt);
 
     case TLS_ST_CR_CERT_STATUS:
         return tls_process_cert_status(s, pkt);
@@ -1169,10 +1169,13 @@ WORK_STATE ossl_statem_client_post_process_message(SSL *s, WORK_STATE wst)
         return tls_post_process_server_certificate(s, wst);
 
     case TLS_ST_CR_CERT_VRFY:
+    case TLS_ST_CR_DID_VRFY:
+    	if(SSL_IS_TLS13(s) && s->auth_method == DID_AUTHN)
+    		return tls_prepare_client_did(s, wst);
+    	else
+    		return tls_prepare_client_certificate(s, wst);
     case TLS_ST_CR_CERT_REQ:
         return tls_prepare_client_certificate(s, wst);
-    case TLS_ST_CR_DID_VRFY:
-    		return tls_prepare_client_did(s, wst);
     }
 }
 
