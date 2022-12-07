@@ -201,15 +201,18 @@ int tls13_set_server_did_methods(SSL *s) {
 //	}
 
 	if(s->ext.peer_supporteddidmethods == NULL) {
+		/* the client did not send the supported did methods extension */
 		s->auth_method = CERTIFICATE_AUTHN;
 		return 1;
 	} else if (is_did_method_supported(s)){
+		/* The server has a DID compatible with the client's DID methods */
 		s->auth_method = DID_AUTHN;
 		if(s->ext.supporteddidmethods != NULL)
+			/* if the server has supported did methods to send set the ones in common with the client */
 			tls13_set_shared_didmethods(s);
 		return 1;
 	} else {
-		SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_NO_SHARED_DID_METHODS);
+		SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_INVALID_DID);
 		return 0;
 	}
 }
