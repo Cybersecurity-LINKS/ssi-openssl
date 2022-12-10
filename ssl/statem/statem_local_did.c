@@ -339,7 +339,7 @@ EXT_RETURN tls_construct_ctos_supported_did_methods(SSL *s, WPACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 
 #ifndef OPENSSL_NO_TLS1_3
-//	return EXT_RETURN_NOT_SENT;
+
 	s->s3.did_sent = 0;
 
 	if (s->ext.supporteddidmethods == NULL || s->ext.supporteddidmethods_len == 0)
@@ -366,11 +366,6 @@ int tls_parse_stoc_supported_did_methods(SSL *s, PACKET *pkt,
 
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET supported_did_methods;
-
-	/*if (!s->s3.did_sent) {
-		SSLfatal(s, SSL_AD_UNSUPPORTED_EXTENSION, SSL_R_BAD_EXTENSION);
-		return 0;
-	}*/
 
 	if (!PACKET_as_length_prefixed_1(pkt, &supported_did_methods)
 			|| PACKET_remaining(&supported_did_methods) == 0) {

@@ -130,7 +130,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
                 st->hand_state = TLS_ST_CR_CERT_REQ;
                 return 1;
             }
-            if (mt == SSL3_MT_CERTIFICATE) {
+            if (!s->s3.did_sent && mt == SSL3_MT_CERTIFICATE) {
                 st->hand_state = TLS_ST_CR_CERT;
                 return 1;
             }
@@ -139,7 +139,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
 				return 1;
 			}
 
-			if (mt == SSL3_MT_DID) {
+			if (s->s3.did_sent && mt == SSL3_MT_DID) {
 				st->hand_state = TLS_ST_CR_DID;
 				return 1;
 			}
@@ -147,22 +147,22 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         break;
 
     case TLS_ST_CR_CERT_REQ:
-        if (mt == SSL3_MT_CERTIFICATE) {
+        if (!s->s3.did_sent && mt == SSL3_MT_CERTIFICATE) {
             st->hand_state = TLS_ST_CR_CERT;
             return 1;
         }
-		if (mt == SSL3_MT_DID) {
+		if (s->s3.did_sent && mt == SSL3_MT_DID) {
 			st->hand_state = TLS_ST_CR_DID;
 			return 1;
 		}
         break;
 
     case TLS_ST_CR_DID_REQ:
-    	if (mt == SSL3_MT_CERTIFICATE){
+    	if (!s->s3.did_sent && mt == SSL3_MT_CERTIFICATE){
     		st->hand_state = TLS_ST_CR_CERT;
     		return 1;
     	}
-		if (mt == SSL3_MT_DID) {
+		if (s->s3.did_sent && mt == SSL3_MT_DID) {
 			st->hand_state = TLS_ST_CR_DID;
 			return 1;
 		}

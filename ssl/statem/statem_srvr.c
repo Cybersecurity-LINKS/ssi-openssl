@@ -87,12 +87,12 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
 
     case TLS_ST_SR_END_OF_EARLY_DATA:
     case TLS_ST_SW_FINISHED:
-        if (s->ext.supporteddidmethods == NULL && s->s3.tmp.cert_request) {
+        if (s->s3.tmp.cert_request) {
             if (mt == SSL3_MT_CERTIFICATE) {
                 st->hand_state = TLS_ST_SR_CERT;
                 return 1;
             }
-        } else if (s->ext.supporteddidmethods != NULL && s->s3.tmp.did_request) {
+        } else if (s->s3.tmp.did_request) {
 			if (mt == SSL3_MT_DID) {
 				st->hand_state = TLS_ST_SR_DID;
 				return 1;
@@ -2118,7 +2118,6 @@ static int tls_early_post_process_client_hello(SSL *s)
         }
 
 		if (SSL_IS_TLS13(s)) {
-			/*s->auth_method = DID_AUTHN;*/
 			if(!tls13_set_server_did_methods(s)){
 				/*SSLfatal() already called*/
 				goto err;

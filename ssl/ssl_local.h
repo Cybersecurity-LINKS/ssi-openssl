@@ -1437,7 +1437,7 @@ struct ssl_st {
         size_t alpn_proposed_len;
         /* used by the client to know if it actually sent alpn */
         int alpn_sent;
-        /* used by the client to know if it actually sent did */
+        /* used by client/server to know if it actually sent did */
         int did_sent;
 
         /*
