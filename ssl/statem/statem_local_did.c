@@ -621,6 +621,8 @@ EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt,
 	uint8_t *didmethods;
 	size_t didmethodslen;
 
+	s->s3.did_sent = 0;
+
 	if(s->shared_didmethods != NULL){
 		didmethods = s->shared_didmethods;
 		didmethodslen = s->shared_didmethodslen;

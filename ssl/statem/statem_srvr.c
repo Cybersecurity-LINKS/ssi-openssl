@@ -497,13 +497,8 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
 		 	 st->hand_state = TLS_ST_SW_DID_REQ;
 		else if (s->ext.supporteddidmethods == NULL && send_certificate_request(s))
 		 	 st->hand_state = TLS_ST_SW_CERT_REQ;
-		/*else if (s->auth_method == CERTIFICATE_AUTHN
-				&& send_certificate_request(s))
-			st->hand_state = TLS_ST_SW_CERT_REQ;*/
 		else if (s->auth_method == CERTIFICATE_AUTHN)
 			st->hand_state = TLS_ST_SW_CERT;
-		/*else if (s->auth_method == DID_AUTHN && send_did_request(s))
-			st->hand_state = TLS_ST_SW_DID_REQ;*/
 		else
 			st->hand_state = TLS_ST_SW_DID;
 
