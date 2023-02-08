@@ -26,8 +26,6 @@ typedef struct didmethod_lookup_st {
     uint8_t didmethod;
 } DIDMETHOD_LOOKUP;
 
-/*int ssl_load_supported_did_methods(SSL_CTX *ctx);*/
-
 __owur int tls13_set_server_did_methods(SSL *s);
 
 __owur int ssl_has_did(const SSL *s, int idx);

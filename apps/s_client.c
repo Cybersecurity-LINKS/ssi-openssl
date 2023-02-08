@@ -46,6 +46,7 @@ typedef unsigned int u_int;
 #include "s_apps.h"
 #include "timeouts.h"
 #include "internal/sockets.h"
+#include <sys/time.h>
 
 #if defined(__has_feature)
 # if __has_feature(memory_sanitizer)
@@ -787,6 +788,7 @@ static int new_session_cb(SSL *s, SSL_SESSION *sess)
 
 int s_client_main(int argc, char **argv)
 {
+	struct timeval tv1, tv2;
 	EVP_PKEY *did_pkey = NULL;
     BIO *sbio;
     EVP_PKEY *key = NULL;
@@ -1655,7 +1657,7 @@ int s_client_main(int argc, char **argv)
     }
 
     if (did)
-		did_pkey = load_key("apps/my_keys/client_did_pkey.pem", 0, 0, NULL,
+		did_pkey = load_key("/home/leonardo/Desktop/openssl-3.0/apps/my_keys/client_did_pkey.pem", 0, 0, NULL,
 				NULL, "client did private key");
 
     if (chain_file != NULL) {
@@ -2869,7 +2871,12 @@ int s_client_main(int argc, char **argv)
             BIO_printf(bio_err, "TIMEOUT occurred\n");
 
         if (!ssl_pending && FD_ISSET(SSL_get_fd(con), &writefds)) {
+        	gettimeofday(&tv1, NULL);
             k = SSL_write(con, &(cbuf[cbuf_off]), (unsigned int)cbuf_len);
+            gettimeofday(&tv2, NULL);
+            printf ("Total time = %f seconds\n\n",
+                     (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
+                     (double) (tv2.tv_sec - tv1.tv_sec));
             switch (SSL_get_error(con, k)) {
             case SSL_ERROR_NONE:
                 cbuf_off += k;
@@ -3257,14 +3264,14 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 					BIO_printf(bio, "\n");
 				}
 			}
+    	}
 #endif
 
-			BIO_printf(bio,
-					   "---\nSSL handshake has read %ju bytes "
-					   "and written %ju bytes\n",
-					   BIO_number_read(SSL_get_rbio(s)),
-					   BIO_number_written(SSL_get_wbio(s)));
-    	}
+		BIO_printf(bio,
+				   "---\nSSL handshake has read %ju bytes "
+				   "and written %ju bytes\n",
+				   BIO_number_read(SSL_get_rbio(s)),
+				   BIO_number_written(SSL_get_wbio(s)));
     }
     print_verify_detail(s, bio);
     BIO_printf(bio, (SSL_session_reused(s) ? "---\nReused, " : "---\nNew, "));

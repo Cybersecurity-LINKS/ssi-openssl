@@ -1767,7 +1767,7 @@ int s_server_main(int argc, char *argv[])
     }
 
     if (did)
-		did_pkey = load_key("apps/my_keys/server_did_pkey.pem", 0, 0, NULL,
+		did_pkey = load_key("/home/leonardo/Desktop/openssl-3.0/apps/my_keys/server_did_pkey.pem", 0, 0, NULL,
 		NULL, "server did private key");
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
     if (next_proto_neg_in) {

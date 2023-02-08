@@ -315,7 +315,7 @@ MSG_PROCESS_RETURN tls_process_did_verify(SSL *s, PACKET *pkt) {
 	 * want to make sure that SSL_get1_peer_certificate() will return the actual
 	 * server certificate from the client_cert_cb callback.
 	 */
-	if (!s->server && s->s3.tmp.did_req == 1)
+	if (!s->server && (s->s3.tmp.did_req == 1 || s->s3.tmp.cert_req == 1))
 		ret = MSG_PROCESS_CONTINUE_PROCESSING;
 	else
 		ret = MSG_PROCESS_CONTINUE_READING;
@@ -339,7 +339,7 @@ EXT_RETURN tls_construct_ctos_supported_did_methods(SSL *s, WPACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 
 #ifndef OPENSSL_NO_TLS1_3
-//	return EXT_RETURN_NOT_SENT;
+
 	s->s3.did_sent = 0;
 
 	if (s->ext.supporteddidmethods == NULL || s->ext.supporteddidmethods_len == 0)
@@ -367,11 +367,6 @@ int tls_parse_stoc_supported_did_methods(SSL *s, PACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET supported_did_methods;
 
-	if (!s->s3.did_sent) {
-		SSLfatal(s, SSL_AD_UNSUPPORTED_EXTENSION, SSL_R_BAD_EXTENSION);
-		return 0;
-	}
-
 	if (!PACKET_as_length_prefixed_1(pkt, &supported_did_methods)
 			|| PACKET_remaining(&supported_did_methods) == 0) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
@@ -394,6 +389,7 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 
 	size_t i;
 
+	s->auth_method = DID_AUTHN;
 	/* Clear certificate validity flags */
 	for (i = 0; i < SSL_PKEY_NUM; i++)
 		s->s3.tmp.valid_flags[i] = 0;
@@ -426,7 +422,7 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 	}
 	if (!tls_collect_extensions(s, &extensions, SSL_EXT_TLS1_3_DID_REQUEST,
 			&rawexts, NULL, 1) || !tls_parse_all_extensions(s,
-	SSL_EXT_TLS1_3_CERTIFICATE_REQUEST, rawexts, NULL, 0, 1)) {
+	SSL_EXT_TLS1_3_DID_REQUEST, rawexts, NULL, 0, 1)) {
 		/* SSLfatal() already called */
 		OPENSSL_free(rawexts);
 		return MSG_PROCESS_ERROR;
@@ -619,17 +615,27 @@ EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 #ifndef OPENSSL_NO_TLS1_3
 
-	if (s->ext.peer_supporteddidmethods == NULL || s->ext.peer_supporteddidmethods_len == 0)
-		return EXT_RETURN_NOT_SENT;
-
 	if (s->ext.supporteddidmethods == NULL || s->ext.supporteddidmethods_len == 0)
 		return EXT_RETURN_NOT_SENT;
+
+	uint8_t *didmethods;
+	size_t didmethodslen;
+
+	s->s3.did_sent = 0;
+
+	if(s->shared_didmethods != NULL){
+		didmethods = s->shared_didmethods;
+		didmethodslen = s->shared_didmethodslen;
+	} else {
+		didmethods = s->ext.supporteddidmethods;
+		didmethodslen = s->ext.supporteddidmethods_len;
+	}
 
 	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_supported_did_methods)
 	/* Sub-packet for sig-algs extension */
 	|| !WPACKET_start_sub_packet_u16(pkt)
 	/* Sub-packet for the actual list */
-	|| !WPACKET_sub_memcpy_u8(pkt, s->shared_didmethods, s->shared_didmethodslen)
+	|| !WPACKET_sub_memcpy_u8(pkt, didmethods, didmethodslen)
 			|| !WPACKET_close(pkt)) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return EXT_RETURN_FAIL;
@@ -715,8 +721,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	 */
 	s->statem.enc_read_state = ENC_READ_STATE_VALID;
 
-	if (SSL_IS_TLS13(s)
-			&& (!PACKET_get_length_prefixed_1(pkt, &context)
+	if ((!PACKET_get_length_prefixed_1(pkt, &context)
 					|| (s->pha_context == NULL
 							&& PACKET_remaining(&context) != 0)
 					|| (s->pha_context != NULL
@@ -755,10 +760,9 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	}
 
 	/*
-	 * Freeze the handshake buffer. For <TLS1.3 we do this after the CKE
-	 * message
+	 * Freeze the handshake buffer
 	 */
-	if (SSL_IS_TLS13(s) && !ssl3_digest_cached_records(s, 1)) {
+	if (!ssl3_digest_cached_records(s, 1)) {
 		/* SSLfatal() already called */
 		return MSG_PROCESS_ERROR;
 	}

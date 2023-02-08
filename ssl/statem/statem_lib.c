@@ -544,13 +544,13 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 
     /*
      * In TLSv1.3 on the client side we make sure we prepare the client
-     * certificate after the CertVerify instead of when we get the
+     * certificate/DID after the CertVerify instead of when we get the
      * CertificateRequest. This is because in TLSv1.3 the CertificateRequest
      * comes *before* the Certificate message. In TLSv1.2 it comes after. We
      * want to make sure that SSL_get1_peer_certificate() will return the actual
      * server certificate from the client_cert_cb callback.
      */
-    if (!s->server && SSL_IS_TLS13(s) && s->s3.tmp.cert_req == 1)
+    if (!s->server && SSL_IS_TLS13(s) && (s->s3.tmp.cert_req == 1 || s->s3.tmp.did_req == 1))
         ret = MSG_PROCESS_CONTINUE_PROCESSING;
     else
         ret = MSG_PROCESS_CONTINUE_READING;
