@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for i in  {0..100}
+do	
+	echo -e "\n\nconnection # $i\n\n"
+	echo "Q" | ./openssl s_client -connect 192.168.0.113:44330 -did did:ott:43FAB3D59E0FB5611622CC24E3ECD659D249622333F66C7AAF32E9A958367992 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> c_did_nodidm_times 
+done

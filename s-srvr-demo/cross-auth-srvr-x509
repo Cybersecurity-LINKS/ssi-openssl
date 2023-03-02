@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./openssl s_server -accept 44330 -www -verify 1 -cert ../../Desktop/openssl-3.0/apps/my_keys/server_certificate.pem -key ../../Desktop/openssl-3.0/apps/my_keys/server_cert_pkey.pem -did_methods ott,eth

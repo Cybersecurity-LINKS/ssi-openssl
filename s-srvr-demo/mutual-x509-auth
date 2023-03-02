@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./openssl s_server -cert ../../Desktop/openssl-3.0/apps/my_keys/server_certificate.pem -key ../../Desktop/openssl-3.0/apps/my_keys/server_cert_pkey.pem -accept 44330 -verify 1 -www 2>> times && cat s_withcauth_cert_times | grep "time" | cut -d " " -f 4
+
+
+cat times.txt | grep "time" | cut -d " " -f 4
