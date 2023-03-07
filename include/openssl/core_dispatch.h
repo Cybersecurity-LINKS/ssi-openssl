@@ -265,8 +265,9 @@ OSSL_CORE_MAKE_FUNC(int, provider_self_test, (void *provctx))
 # define OSSL_OP_ENCODER                            20
 # define OSSL_OP_DECODER                            21
 # define OSSL_OP_STORE                              22
+# define OSSL_OP_DID                                23
 /* Highest known operation number */
-# define OSSL_OP__HIGHEST                           22
+# define OSSL_OP__HIGHEST                           23
 
 /* Digests */
 
@@ -935,6 +936,24 @@ OSSL_CORE_MAKE_FUNC(int, store_close, (void *loaderctx))
 OSSL_CORE_MAKE_FUNC(int, store_export_object,
                     (void *loaderctx, const void *objref, size_t objref_sz,
                      OSSL_CALLBACK *export_cb, void *export_cbarg))
+
+ /*-
+  * Did
+  *
+  * Functions that implements the CRUD operation
+  * functions, which implement an OSSL_STORE loader.
+  */
+
+ #define OSSL_FUNC_DID_CREATE                        1
+ #define OSSL_FUNC_DID_RESOLVE                       2
+ #define OSSL_FUNC_DID_UPDATE                        3
+ #define OSSL_FUNC_DID_REVOKE                        4
+ OSSL_CORE_MAKE_FUNC(void *, did_create, (void *sig1, size_t siglen1,
+						 int type1, void *sig2, size_t siglen2, int type2))
+ OSSL_CORE_MAKE_FUNC(int, did_resolve, (char * index, DID_DOCUMENT* did_doc))
+ OSSL_CORE_MAKE_FUNC(int, did_update, (char * index, void *sig1, size_t siglen1,
+						 int type1, void *sig2, size_t siglen2, int type2))
+ OSSL_CORE_MAKE_FUNC(int, did_revoke, (char * index))
 
 # ifdef __cplusplus
 }

@@ -1,0 +1,5 @@
+LIBS=../../libcrypto
+SOURCE[../../libcrypto]=\
+    did_meth.c 
+
+
