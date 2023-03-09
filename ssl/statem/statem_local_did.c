@@ -9,6 +9,7 @@
 #include <ssl/ssl_local_did.h>
 
 #include "statem_local_did.h"
+#include <crypto/did.h>
 #include "/home/pirug/Desktop/C_CRUD/did_method.h"
 
 int init_did(SSL *s, unsigned int context) {
@@ -464,18 +465,46 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 
 MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 
-	did_document_ *didDocument = NULL;
+	/*did_document_ *didDocument = NULL;*/
 	unsigned int did_len, context, method;
-	unsigned char server_did[100];
+	/*unsigned char server_did[100];*/
 	BIO *pubkey;
 
-	didDocument = calloc(1, sizeof(did_document_));
-	if (didDocument == NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	DID_DOCUMENT *did_doc = NULL;
+	DID_CTX *didctx = NULL;
+	OSSL_PROVIDER *provider = NULL;
+	int ret;
+	char *server_did;
+
+	//load the did provider for did operations
+	provider = OSSL_PROVIDER_load(NULL, "didprovider");
+	if (provider == NULL) {
+		printf("DID provider load failed\n");
 		return MSG_PROCESS_ERROR;
 	}
 
-	did_document_init(didDocument);
+	didctx = DID_CTX_new(provider);
+	if (didctx == NULL) {
+		printf("DID CTX new failed\n");
+		return MSG_PROCESS_ERROR;
+	}
+
+	//Creation of new did document
+	did_doc = DID_DOCUMENT_new();
+	if (did_doc == NULL) {
+		printf("DID document new failed\n");
+		return MSG_PROCESS_ERROR;
+	}
+
+	DID_fetch(NULL, didctx, "OTT", "property");
+
+	/*didDocument = calloc(1, sizeof(did_document_));
+	 if (didDocument == NULL) {
+	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	 return MSG_PROCESS_ERROR;
+	 }
+
+	 did_document_init(didDocument);*/
 
 	if (!PACKET_get_1(pkt, &context) || context != 0) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
@@ -494,17 +523,45 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 		return MSG_PROCESS_ERROR;
 	}
 
-	if(resolve_(didDocument, (char *)server_did) != DID_RESOLVE_OK){
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
-		return MSG_PROCESS_ERROR;
+	/*if(resolve_(didDocument, (char *)server_did) != DID_RESOLVE_OK){
+	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
+	 return MSG_PROCESS_ERROR;
+	 }*/
+
+	ret = DID_resolve(didctx, server_did, did_doc);
+
+	switch (ret) {
+	case DID_INTERNAL_ERROR:
+		printf("DID method internal error\n");
+		return -1;
+		break;
+	case DID_NOT_FOUD:
+		printf("DID document not found\n");
+		return 0;
+		break;
+	case DID_REVOKED:
+		printf("DID %s REVOKED\n", server_did);
+		return 0;
+		break;
+	case DID_OK:
+		printf("DID %s FOUND\n", server_did);
+		break;
+	default:
+		break;
 	}
 
-	if((pubkey = BIO_new_mem_buf(didDocument->authMethod.pk_pem.p, -1)) == NULL){
+	/*if((pubkey = BIO_new_mem_buf(didDocument->authMethod.pk_pem.p, -1)) == NULL){
+	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	 return MSG_PROCESS_ERROR;
+	 }*/
+
+	if ((pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1)) == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
-	if((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(pubkey, NULL, NULL, NULL)) == NULL ){
+	if ((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(pubkey, NULL, NULL,
+			NULL)) == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
@@ -700,19 +757,46 @@ int tls_construct_server_did(SSL *s, WPACKET *pkt) {
 MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 
 	PACKET context;
-	did_document_ *didDocument = NULL;
+	/*did_document_ *didDocument = NULL;*/
 	unsigned int did_len, method;
-	unsigned char client_did[100];
+	/*unsigned char client_did[100];*/
 	BIO *pubkey;
 
+	/*didDocument = calloc(1, sizeof(did_document_));
+	 if (didDocument == NULL) {
+	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	 return MSG_PROCESS_ERROR;
+	 }
 
-	didDocument = calloc(1, sizeof(did_document_));
-	if (didDocument == NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	 did_document_init(didDocument);*/
+
+	DID_DOCUMENT *did_doc = NULL;
+	DID_CTX *didctx = NULL;
+	OSSL_PROVIDER *provider = NULL;
+	char *client_did;
+	int ret;
+
+	//load the did provider for did operations
+	provider = OSSL_PROVIDER_load(NULL, "didprovider");
+	if (provider == NULL) {
+		printf("DID provider load failed\n");
 		return MSG_PROCESS_ERROR;
 	}
 
-	did_document_init(didDocument);
+	didctx = DID_CTX_new(provider);
+	if (didctx == NULL) {
+		printf("DID CTX new failed\n");
+		return MSG_PROCESS_ERROR;
+	}
+
+	//Creation of new did document
+	did_doc = DID_DOCUMENT_new();
+	if (did_doc == NULL) {
+		printf("DID document new failed\n");
+		return MSG_PROCESS_ERROR;
+	}
+
+	DID_fetch(NULL, didctx, "OTT", "property");
 
 	/*
 	 * To get this far we must have read encrypted data from the client. We no
@@ -722,11 +806,10 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	s->statem.enc_read_state = ENC_READ_STATE_VALID;
 
 	if ((!PACKET_get_length_prefixed_1(pkt, &context)
-					|| (s->pha_context == NULL
-							&& PACKET_remaining(&context) != 0)
-					|| (s->pha_context != NULL
-							&& !PACKET_equal(&context, s->pha_context,
-									s->pha_context_len)))) {
+			|| (s->pha_context == NULL && PACKET_remaining(&context) != 0)
+			|| (s->pha_context != NULL
+					&& !PACKET_equal(&context, s->pha_context,
+							s->pha_context_len)))) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_INVALID_CONTEXT);
 		return MSG_PROCESS_ERROR;
 	}
@@ -743,13 +826,40 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	if (resolve_(didDocument, (char*) client_did) != DID_RESOLVE_OK){
-		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
-		return MSG_PROCESS_ERROR;
+	/*if (resolve_(didDocument, (char*) client_did) != DID_RESOLVE_OK){
+	 SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
+	 return MSG_PROCESS_ERROR;
+	 }*/
+
+	ret = DID_resolve(didctx, client_did, did_doc);
+
+	switch (ret) {
+	case DID_INTERNAL_ERROR:
+		printf("DID method internal error\n");
+		return -1;
+		break;
+	case DID_NOT_FOUD:
+		printf("DID document not found\n");
+		return 0;
+		break;
+	case DID_REVOKED:
+		printf("DID %s REVOKED\n", client_did);
+		return 0;
+		break;
+	case DID_OK:
+		printf("DID %s FOUND\n", client_did);
+		break;
+	default:
+		break;
 	}
 
-	if ((pubkey = BIO_new_mem_buf(didDocument->authMethod.pk_pem.p, -1)) == NULL) {
-		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
+	/*if ((pubkey = BIO_new_mem_buf(didDocument->authMethod.pk_pem.p, -1)) == NULL) {
+	 SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
+	 return MSG_PROCESS_ERROR;
+	 }*/
+
+	if ((pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1)) == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
