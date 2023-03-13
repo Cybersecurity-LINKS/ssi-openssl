@@ -1,3 +1,6 @@
 #!/bin/bash
 
-./openssl s_server -cert ../../Desktop/openssl-3.0/apps/my_keys/server_certificate.pem -key ../../Desktop/openssl-3.0/apps/my_keys/server_cert_pkey.pem -accept 44330 -www
+SERVER_CERT=my_keys/server_certificate.pem
+SERVER_PRIV_KEY=my_keys/server_cert_pkey.pem
+
+../openssl s_server -cert $SERVER_CERT -key $SERVER_PRIV_KEY -accept 44330 -www

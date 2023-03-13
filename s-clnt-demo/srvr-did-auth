@@ -1,7 +1,9 @@
 #!/bin/bash
 
+HOST=localhost
+
 for i in  {0..100}
 do	
 	echo -e "\n\nconnection # $i\n\n"
-	echo "Q" | ./openssl s_client -connect 192.168.1.15:44330 -did_methods ott,eth 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> c_noauth_did_times 
+	echo "Q" | ../openssl s_client -connect $HOST:44330 -did_methods ott,eth 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> srvr-did-auth-times 
 done

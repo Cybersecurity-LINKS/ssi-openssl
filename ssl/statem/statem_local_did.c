@@ -10,7 +10,8 @@
 
 #include "statem_local_did.h"
 #include <crypto/did.h>
-#include "/home/pirug/Desktop/C_CRUD/did_method.h"
+#include <openssl/provider.h>
+//#include "/home/pirug/Desktop/C_CRUD/did_method.h"
 
 int init_did(SSL *s, unsigned int context) {
 
@@ -474,7 +475,7 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 	DID_CTX *didctx = NULL;
 	OSSL_PROVIDER *provider = NULL;
 	int ret;
-	char *server_did;
+	unsigned char *server_did;
 
 	//load the did provider for did operations
 	provider = OSSL_PROVIDER_load(NULL, "didprovider");
@@ -516,13 +517,18 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 		return MSG_PROCESS_ERROR;
 	}
 
-	if (!PACKET_get_net_2(pkt, &did_len)
-			|| !PACKET_copy_bytes(pkt, server_did, did_len)
-			|| PACKET_remaining(pkt) != 0) {
+	if (!PACKET_get_net_2(pkt, &did_len)) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
 		return MSG_PROCESS_ERROR;
 	}
 
+	server_did = OPENSSL_malloc(sizeof(unsigned char) * did_len);
+
+	if (!PACKET_copy_bytes(pkt, server_did, did_len)
+			|| PACKET_remaining(pkt) != 0) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
+		return MSG_PROCESS_ERROR;
+	}
 	/*if(resolve_(didDocument, (char *)server_did) != DID_RESOLVE_OK){
 	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
 	 return MSG_PROCESS_ERROR;
@@ -773,7 +779,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	DID_DOCUMENT *did_doc = NULL;
 	DID_CTX *didctx = NULL;
 	OSSL_PROVIDER *provider = NULL;
-	char *client_did;
+	unsigned char *client_did;
 	int ret;
 
 	//load the did provider for did operations
@@ -819,8 +825,15 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	if (!PACKET_get_net_2(pkt, &did_len)
-			|| !PACKET_copy_bytes(pkt, client_did, did_len)
+	if (!PACKET_get_net_2(pkt, &did_len)) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
+		return MSG_PROCESS_ERROR;
+	}
+
+
+	client_did = OPENSSL_malloc(sizeof(unsigned char) * did_len);
+
+	if (!PACKET_copy_bytes(pkt, client_did, did_len)
 			|| PACKET_remaining(pkt) != 0) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;

@@ -1,3 +1,5 @@
 #!/bin/bash
 
-./openssl s_server -accept 44330 -www -nocert -did did:ott:A132F780A4FFF3D439A59A81453B968AA30C4A7687EBFCB1BCE0DC7A2DE0635A -did_methods ott,eth
+DID=A132F780A4FFF3D439A59A81453B968AA30C4A7687EBFCB1BCE0DC7A2DE0635A
+
+../openssl s_server -accept 44330 -www -nocert -did did:ott:$DID -did_methods ott,eth

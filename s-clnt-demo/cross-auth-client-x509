@@ -1,7 +1,11 @@
 #!/bin/bash
 
+HOST=localhost
+CLIENT_CERT=my_keys/client_certificate.pem
+CLIENT_PRIV_KEY=my_keys/client_cert_pkey.pem
+
 for i in  {0..100}
 do	
 	echo -e "\n\nconnection # $i\n\n"
-	echo "Q" | ./openssl s_client -connect 192.168.0.113:44330 -cert ../../Desktop/openssl-3.0/apps/my_keys/client_certificate.pem -key ../../Desktop/openssl-3.0/apps/my_keys/client_cert_pkey.pem -did_methods ott,eth 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> c_cert_didm_times 
+	echo "Q" | ../openssl s_client -connect $HOST:44330 -cert $CLIENT_CERT -key $CLIENT_PRIV_KEY -did_methods ott,eth 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> cross-auth-client-x509-times 
 done

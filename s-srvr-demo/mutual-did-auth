@@ -1,3 +1,5 @@
 #!/bin/bash
 
-./openssl s_server -accept 44330 -www -nocert -verify 1 -did did:ott:A132F780A4FFF3D439A59A81453B968AA30C4A7687EBFCB1BCE0DC7A2DE0635A -did_methods ott,eth
+DID=2B21D9D5CDF439182878F428BFB940352EC79AC093072882E73509F0249E7BD7
+
+../openssl s_server -accept 44330 -www -nocert -verify 1 -did did:ott:$DID -did_methods ott,eth 2>> times

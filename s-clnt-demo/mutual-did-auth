@@ -1,7 +1,10 @@
 #!/bin/bash
 
+HOST=localhost
+DID=AC6B7063F10363A48E07216DACAE820EC87B740B8CCCEBC5E5A45547DD4AEC74 
+
 for i in  {0..100}
 do	
 	echo -e "\n\nconnection # $i\n\n"
-	echo "Q" | ./openssl s_client -connect 192.168.0.113:44330 -did did:ott:43FAB3D59E0FB5611622CC24E3ECD659D249622333F66C7AAF32E9A958367992 -did_methods ott,eth 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> c_auth_did_times 
+	echo "Q" | ../openssl s_client -connect $HOST:44330 -did did:ott:$DID -did_methods ott,eth 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> mutual-did-auth-times 
 done
