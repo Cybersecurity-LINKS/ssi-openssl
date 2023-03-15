@@ -1657,7 +1657,7 @@ int s_client_main(int argc, char **argv)
     }
 
     if (did)
-		did_pkey = load_key("/home/pirug/Desktop/SSI-openssl3.0/apps/my_keys/client_did_pkey.pem", 0, 0, NULL,
+		did_pkey = load_key("apps/my_keys/rsa/client_did_pkey.pem", 0, 0, NULL,
 				NULL, "client did private key");
 
     if (chain_file != NULL) {
@@ -1938,7 +1938,6 @@ int s_client_main(int argc, char **argv)
 		}
 	}
 
-	//char *s = strdup("did:ott:47D81093165893CAAA00981ECCA21BAFB218F3F7FFAA99D505C383EDCB2D0480");
 	if (did)
 		if (!set_did_key_stuff(ctx, did_pkey, did))
 			goto end;
