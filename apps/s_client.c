@@ -1657,7 +1657,7 @@ int s_client_main(int argc, char **argv)
     }
 
     if (did)
-		did_pkey = load_key("apps/my_keys/rsa/client_did_pkey.pem", 0, 0, NULL,
+		did_pkey = load_key("apps/my_keys/ecdsa/client_did_pkey.pem", 0, 0, NULL,
 				NULL, "client did private key");
 
     if (chain_file != NULL) {

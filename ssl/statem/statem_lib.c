@@ -1564,7 +1564,7 @@ static int is_tls13_capable(const SSL *s)
          * more restrictive so check that our sig algs are consistent with this
          * EC cert. See section 4.2.3 of RFC8446.
          */
-        curve = ssl_get_EC_curve_nid(s->cert->pkeys[SSL_PKEY_ECC].privatekey);
+        curve = ssl_get_EC_curve_nid(s->cert->pkeys[SSL_PKEY_ECC].privatekey != NULL ? s->cert->pkeys[SSL_PKEY_ECC].privatekey : s->did->pkeys[SSL_PKEY_ECC].privatekey);
         if (tls_check_sigalg_curve(s, curve))
             return 1;
     }
