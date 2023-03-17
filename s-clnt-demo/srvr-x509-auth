@@ -1,9 +1,15 @@
 #!/bin/bash
 
-HOST=localhost
+if [ $# -ne 2 ]; then
+	echo "USAGE: $0 [HOST] [PORT]"
+	exit 0
+fi
+
+HOST=$1
+PORT=$2
 
 for i in  {0..100}
 do	
 	echo -e "\n\nconnection # $i\n\n"
-	echo "Q" | ../openssl s_client -connect $HOST:44330 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> srvr-x509-auth-times
+	echo "Q" | ../openssl s_client -connect $HOST:$PORT 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> $0-times
 done

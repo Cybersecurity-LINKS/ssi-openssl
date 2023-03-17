@@ -1,7 +1,13 @@
 #!/bin/bash
 
+if [ $# -ne 1 ]; then
+	echo "USAGE: $0 [PORT]"
+	exit 0
+fi
+
+PORT=$1
 SERVER_CERT=my_keys/server_certificate.pem
 SERVER_PRIV_KEY=my_keys/server_cert_pkey.pem
 
-../openssl s_server -cert $SERVER_CERT -key $SERVER_PRIV_KEY -accept 44330 -verify 1 -www 2>> times
+../openssl s_server -cert $SERVER_CERT -key $SERVER_PRIV_KEY -accept $PORT -verify 1 -www 2>> times
 

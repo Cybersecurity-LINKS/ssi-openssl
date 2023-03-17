@@ -481,12 +481,14 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 	provider = OSSL_PROVIDER_load(NULL, "didprovider");
 	if (provider == NULL) {
 		printf("DID provider load failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
 	didctx = DID_CTX_new(provider);
 	if (didctx == NULL) {
 		printf("DID CTX new failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -494,6 +496,7 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 	did_doc = DID_DOCUMENT_new();
 	if (did_doc == NULL) {
 		printf("DID document new failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -539,14 +542,17 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 	switch (ret) {
 	case DID_INTERNAL_ERROR:
 		printf("DID method internal error\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return -1;
 		break;
 	case DID_NOT_FOUD:
 		printf("DID document not found\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 		break;
 	case DID_REVOKED:
 		printf("DID %s REVOKED\n", server_did);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 		break;
 	case DID_OK:
@@ -578,6 +584,10 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
 		/* SSLfatal() already called */;
 		return MSG_PROCESS_ERROR;
 	}
+
+	DID_DOCUMENT_free(did_doc);
+	OSSL_PROVIDER_unload(provider);
+	DID_CTX_free(didctx);
 
 	return MSG_PROCESS_CONTINUE_READING;
 }
@@ -786,12 +796,14 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	provider = OSSL_PROVIDER_load(NULL, "didprovider");
 	if (provider == NULL) {
 		printf("DID provider load failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
 	didctx = DID_CTX_new(provider);
 	if (didctx == NULL) {
 		printf("DID CTX new failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -799,6 +811,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	did_doc = DID_DOCUMENT_new();
 	if (did_doc == NULL) {
 		printf("DID document new failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -849,14 +862,17 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 	switch (ret) {
 	case DID_INTERNAL_ERROR:
 		printf("DID method internal error\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return -1;
 		break;
 	case DID_NOT_FOUD:
 		printf("DID document not found\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 		break;
 	case DID_REVOKED:
 		printf("DID %s REVOKED\n", client_did);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 		break;
 	case DID_OK:
@@ -896,6 +912,10 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
 		/* SSLfatal() already called */;
 		return MSG_PROCESS_ERROR;
 	}
+
+	DID_DOCUMENT_free(did_doc);
+	OSSL_PROVIDER_unload(provider);
+	DID_CTX_free(didctx);
 
 	return MSG_PROCESS_CONTINUE_READING;
 }

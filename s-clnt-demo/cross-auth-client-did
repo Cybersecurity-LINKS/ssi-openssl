@@ -1,10 +1,17 @@
 #!/bin/bash
 
-HOST=localhost
-DID=43FAB3D59E0FB5611622CC24E3ECD659D249622333F66C7AAF32E9A958367992
+if [ $# -ne 3 ]; then
+	echo "USAGE: $0 [HOST] [PORT] [KEY_TYPE]"
+	exit 0
+fi
+
+HOST=$1
+PORT=$2
+DID=$(cat my_keys/devnet/$3/client_did)
+DID_PKEY=my_keys/devnet/$3/client_did_pkey.pem 
 
 for i in  {0..100}
 do	
 	echo -e "\n\nconnection # $i\n\n"
-	echo "Q" | ../openssl s_client -connect $HOST:44330 -did did:ott:$DID 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> cross-auth-client-did-times 
+	echo "Q" | ../openssl s_client -connect $HOST:$PORT -did $DID 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> $0-times 
 done

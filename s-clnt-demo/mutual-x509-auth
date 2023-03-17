@@ -1,12 +1,18 @@
 #!/bin/bash
 
-HOST=localhost
-CLIENT_CERT=my_keys/client_certificate.pem
-CLIENT_PRIV_KEY=my_keys/client_cert_pkey.pem
+if [ $# -ne 2 ]; then
+	echo "USAGE: $0 [HOST] [PORT]"
+	exit 0
+fi
+
+HOST=$1
+PORT=$2
+CERT=my_keys/client_certificate.pem
+CERT_PKEY=my_keys/client_cert_pkey.pem
 
 
 for i in  {0..100}
 do	
 	echo -e "\n\nconnection # $i\n\n"
-	echo "Q" | ../openssl s_client -connect $HOST:44330 -cert $CLIENT_CERT -key $CLIENT_PRIV_KEY 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> mutual-x509-auth-times 
+	echo "Q" | ../openssl s_client -connect $HOST:$PORT -cert $CERT -key $CERT_PKEY 2> stderr.txt | grep "Total time" | cut -d " " -f 4 >> $0-times 
 done

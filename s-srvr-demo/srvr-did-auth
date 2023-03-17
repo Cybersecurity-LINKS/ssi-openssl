@@ -1,5 +1,11 @@
 #!/bin/bash
 
-DID=A132F780A4FFF3D439A59A81453B968AA30C4A7687EBFCB1BCE0DC7A2DE0635A
+if [ $# -ne 2 ]; then
+	echo "USAGE: $0 [PORT] [KEY_TYPE]"
+	exit 0
+fi
 
-../openssl s_server -accept 44330 -www -nocert -did did:ott:$DID -did_methods ott,eth
+PORT=$1
+DID=$(cat my_keys/devnet/$2/server_did)
+
+../openssl s_server -accept $1 -www -nocert -did $DID -did_methods ott,eth
