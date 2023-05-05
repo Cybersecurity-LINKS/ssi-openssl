@@ -1,12 +1,12 @@
 #include <openssl/core_names.h>
-#include <openssl/did.h>
 #include <openssl/crypto.h>
-#include "crypto/did.h"
 #include "internal/provider.h"
 #include <stdio.h>
 #include <string.h>
 
 #include <openssl/provider.h>
+#include <openssl/ssi.h>
+#include <crypto/ssi.h>
 
 
 DID_CTX *DID_CTX_new(OSSL_PROVIDER * provider){
@@ -20,6 +20,7 @@ DID_CTX *DID_CTX_new(OSSL_PROVIDER * provider){
     ctx->prov = provider;
     return ctx;
 }
+
 void DID_CTX_free(DID_CTX *ctx){
     if (ctx == NULL)
         return;

@@ -938,10 +938,10 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
                      OSSL_CALLBACK *export_cb, void *export_cbarg))
 
  /*-
-  * Did
+  * DID
   *
   * Functions that implements the CRUD operation
-  * functions, which implement an OSSL_STORE loader.
+  * functions.
   */
 
  #define OSSL_FUNC_DID_CREATE                        1
@@ -954,6 +954,17 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
  OSSL_CORE_MAKE_FUNC(int, did_update, (char * index, void *sig1, size_t siglen1,
 						 int type1, void *sig2, size_t siglen2, int type2))
  OSSL_CORE_MAKE_FUNC(int, did_revoke, (char * index))
+ 
+/*
+ * VC
+ *
+ * Functions that handle verifiable credentials
+ */
+
+#define OSSL_FUNC_VC_CREATE			    			1
+#define OSSL_FUNC_VC_VERIFY                         2
+#define OSSL_FUNC_VC_SERIALIZE			    		3
+#define OSSL_FUNC_VC_DESERIALIZE		    		4
 
 # ifdef __cplusplus
 }

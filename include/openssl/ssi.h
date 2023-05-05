@@ -1,9 +1,10 @@
-#ifndef OPENSSL_DID_H
-# define OPENSSL_DID_H
+#ifndef OPENSSL_SSI_H
+# define OPENSSL_SSI_H
+
 # pragma once
 
 # include <openssl/core_dispatch.h>
-# include <openssl/did.h>
+# include "ssi.h"
 # include <openssl/types.h>
 
 # define DID_OTT "OTT"
@@ -27,5 +28,15 @@ int DID_resolve(DID_CTX *ctx, char * did, DID_DOCUMENT* did_doc);
 int DID_update(DID_CTX *ctx, DID_DOCUMENT* did_doc, char * did);
 int DID_revoke(DID_CTX *ctx, char * did);
 
+
+VC_CTX* VC_CTX_new(OSSL_PROVIDER *provider);
+void VC_CTX_free(VC_CTX *ctx);
+VC* VC_new(void);
+void VC_free(VC* vc);
+int VC_fetch(OSSL_LIB_CTX *libctx, VC_CTX *ctx, const char *algorithm, const char *properties);
+int VC_create(VC_CTX *ctx, VC *vc);
+int VC_verify(VC_CTX *ctx, VC *vc);
+int VC_serialize(VC_CTX *ctx, unsigned char *vc_stream, VC *vc);
+int VC_deserialize(VC_CTX *ctx, unsigned char *vc_stream, VC *vc);
 
 #endif
