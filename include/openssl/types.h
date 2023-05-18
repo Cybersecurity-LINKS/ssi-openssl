@@ -232,6 +232,9 @@ typedef struct ossl_self_test_st OSSL_SELF_TEST;
 typedef struct did_ctx_st DID_CTX;
 typedef struct did_document_st DID_DOCUMENT;
 
+typedef struct ssi_vc_ctx_st SSI_VC_CTX;
+typedef struct ssi_vc_st SSI_VC;
+
 #ifdef  __cplusplus
 }
 #endif

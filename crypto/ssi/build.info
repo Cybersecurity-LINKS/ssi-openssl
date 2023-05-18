@@ -1,5 +1,3 @@
 LIBS=../../libcrypto
 SOURCE[../../libcrypto]=\
-    did_meth.c 
-
-
+    vc.c did_meth.c  

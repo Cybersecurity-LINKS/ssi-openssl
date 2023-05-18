@@ -27,6 +27,8 @@
 # include <openssl/async.h>
 # include <openssl/symhacks.h>
 # include <openssl/ct.h>
+
+#include "../include/crypto/ssi.h"
 # include "record/record.h"
 # include "statem/statem.h"
 # include "internal/packet.h"
@@ -35,7 +37,6 @@
 # include "internal/tsan_assist.h"
 # include "internal/bio.h"
 # include "internal/ktls.h"
-# include "crypto/did.h"
 
 # ifdef OPENSSL_BUILD_SHLIBSSL
 #  undef OPENSSL_EXTERN

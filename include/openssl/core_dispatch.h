@@ -266,6 +266,7 @@ OSSL_CORE_MAKE_FUNC(int, provider_self_test, (void *provctx))
 # define OSSL_OP_DECODER                            21
 # define OSSL_OP_STORE                              22
 # define OSSL_OP_DID                                23
+# define OSSL_OP_VC									24
 /* Highest known operation number */
 # define OSSL_OP__HIGHEST                           23
 
@@ -850,6 +851,7 @@ OSSL_CORE_MAKE_FUNC(const OSSL_PARAM *, kem_settable_ctx_params,
 # define OSSL_FUNC_ENCODER_ENCODE                     11
 # define OSSL_FUNC_ENCODER_IMPORT_OBJECT              20
 # define OSSL_FUNC_ENCODER_FREE_OBJECT                21
+
 OSSL_CORE_MAKE_FUNC(void *, encoder_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(void, encoder_freectx, (void *ctx))
 OSSL_CORE_MAKE_FUNC(int, encoder_get_params, (OSSL_PARAM params[]))
@@ -881,6 +883,7 @@ OSSL_CORE_MAKE_FUNC(void, encoder_free_object, (void *obj))
 # define OSSL_FUNC_DECODER_DOES_SELECTION             10
 # define OSSL_FUNC_DECODER_DECODE                     11
 # define OSSL_FUNC_DECODER_EXPORT_OBJECT              20
+
 OSSL_CORE_MAKE_FUNC(void *, decoder_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(void, decoder_freectx, (void *ctx))
 OSSL_CORE_MAKE_FUNC(int, decoder_get_params, (OSSL_PARAM params[]))
@@ -921,6 +924,7 @@ OSSL_CORE_MAKE_FUNC(int, decoder_export_object,
 #define OSSL_FUNC_STORE_EOF                         6
 #define OSSL_FUNC_STORE_CLOSE                       7
 #define OSSL_FUNC_STORE_EXPORT_OBJECT               8
+
 OSSL_CORE_MAKE_FUNC(void *, store_open, (void *provctx, const char *uri))
 OSSL_CORE_MAKE_FUNC(void *, store_attach, (void *provctx, OSSL_CORE_BIO *in))
 OSSL_CORE_MAKE_FUNC(const OSSL_PARAM *, store_settable_ctx_params,
@@ -938,22 +942,49 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
                      OSSL_CALLBACK *export_cb, void *export_cbarg))
 
  /*-
-  * Did
+  * DID
   *
-  * Functions that implements the CRUD operation
-  * functions, which implement an OSSL_STORE loader.
+  * Functions to perform CRUD operations
+  *
   */
 
  #define OSSL_FUNC_DID_CREATE                        1
  #define OSSL_FUNC_DID_RESOLVE                       2
  #define OSSL_FUNC_DID_UPDATE                        3
  #define OSSL_FUNC_DID_REVOKE                        4
- OSSL_CORE_MAKE_FUNC(void *, did_create, (void *sig1, size_t siglen1,
+
+OSSL_CORE_MAKE_FUNC(void *, did_create, (void *sig1, size_t siglen1,
 						 int type1, void *sig2, size_t siglen2, int type2))
- OSSL_CORE_MAKE_FUNC(int, did_resolve, (char * index, DID_DOCUMENT* did_doc))
- OSSL_CORE_MAKE_FUNC(int, did_update, (char * index, void *sig1, size_t siglen1,
+OSSL_CORE_MAKE_FUNC(int, did_resolve, (char * index, DID_DOCUMENT* did_doc))
+OSSL_CORE_MAKE_FUNC(int, did_update, (char * index, void *sig1, size_t siglen1,
 						 int type1, void *sig2, size_t siglen2, int type2))
- OSSL_CORE_MAKE_FUNC(int, did_revoke, (char * index))
+OSSL_CORE_MAKE_FUNC(int, did_revoke, (char * index))
+ 
+/*
+ * VC
+ *
+ * Functions to handle verifiable credentials
+ */
+
+#define OSSL_FUNC_VC_NEWCTX							1
+#define OSSL_FUNC_VC_CREATE			    			2
+#define OSSL_FUNC_VC_VERIFY                         3
+#define OSSL_FUNC_VC_SERIALIZE			    		4
+#define OSSL_FUNC_VC_DESERIALIZE		    		5
+#define OSSL_FUNC_VC_FREECTX						6
+#define OSSL_FUNC_VC_SET_CTX_PARAMS            		7
+#define OSSL_FUNC_VC_GET_CTX_PARAMS            		8
+
+OSSL_CORE_MAKE_FUNC(void *, vc_newctx, (void *provctx))
+OSSL_CORE_MAKE_FUNC(void *, vc_create, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, vc_verify, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, vc_serialize, (void *vcctx, unsigned char *vc_stream, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, vc_deserialize, (void *vcctx, unsigned char *vc_stream, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(void, vc_freectx, (void *vcctx))
+OSSL_CORE_MAKE_FUNC(int, vc_set_ctx_params,
+                    (void *vcctx, const OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, vc_get_ctx_params,
+                    (void *vcctx, OSSL_PARAM params[]))
 
 # ifdef __cplusplus
 }

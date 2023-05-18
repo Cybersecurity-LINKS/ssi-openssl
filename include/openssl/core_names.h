@@ -549,6 +549,20 @@ extern "C" {
 /* OSSL_DECODER input type if a decoder is used by the store */
 #define OSSL_STORE_PARAM_INPUT_TYPE "input-type"   /* UTF8_STRING */
 
+/* VC parameters */
+#define OSSL_VC_PARAM_CONTEXT        		"context"
+#define OSSL_VC_PARAM_ID             		"id"
+#define OSSL_VC_PARAM_TYPE          		"vc-type"
+#define OSSL_VC_PARAM_ISSUER              	"issuer"
+#define OSSL_VC_PARAM_ISSUANCE_DATE         "issuance-date"
+#define OSSL_VC_PARAM_EXPIRATION_DATE 		"expiration-date"
+#define OSSL_VC_PARAM_SUBJECT               "subject"
+#define OSSL_VC_PARAM_PROOF_TYPE			"type"
+#define OSSL_VC_PARAM_PROOF_CREATED			"proof-created"
+#define OSSL_VC_PARAM_PROOF_PURPOSE			"proof-purpose"
+#define OSSL_VC_PARAM_VERIFICATION_METHOD	"verification-method"
+#define OSSL_VC_PARAM_PROOF_VALUE			"proof-value"
+
 # ifdef __cplusplus
 }
 # endif
