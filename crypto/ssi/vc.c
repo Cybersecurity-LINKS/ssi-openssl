@@ -41,6 +41,12 @@ SSI_VC *SSI_VC_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *pr
 	return NULL;
 }
 
+void VC_CTX_free(VC_CTX *ctx) {
+    if (ctx == NULL)
+        return;
+    OPENSSL_free(ctx);
+}
+
 char *SSI_VC_create(SSI_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]) {
 
 	return ctx->meth->create(ctx->algctx, pkey, params);
@@ -75,5 +81,3 @@ int SSI_VC_CTX_set_params(SSI_VC_CTX *ctx, OSSL_PARAM params[]){
 	        return ctx->meth->set_ctx_params(ctx->algctx, params);
 	    return 1;
 }
-
-
