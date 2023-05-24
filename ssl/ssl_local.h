@@ -28,7 +28,7 @@
 # include <openssl/symhacks.h>
 # include <openssl/ct.h>
 
-#include "../include/crypto/ssi.h"
+#include "../include/crypto/evp_ssi.h"
 # include "record/record.h"
 # include "statem/statem.h"
 # include "internal/packet.h"

@@ -943,15 +943,9 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
 
  /*-
   * DID
-<<<<<<< HEAD
   *
   * Functions to perform CRUD operations
   *
-=======
-  *
-  * Functions that implements the CRUD operation
-  * functions.
->>>>>>> bf58db22b6ca779a3d146616aedfd51b7302c455
   */
 
  #define OSSL_FUNC_DID_CREATE                        1

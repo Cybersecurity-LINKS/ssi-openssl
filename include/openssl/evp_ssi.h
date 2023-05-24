@@ -4,7 +4,7 @@
 # pragma once
 
 # include <openssl/core_dispatch.h>
-# include "ssi.h"
+# include "evp_ssi.h"
 # include <openssl/types.h>
 
 # define DID_OTT "OTT"
@@ -32,14 +32,14 @@ int DID_update(DID_CTX *ctx, DID_DOCUMENT* did_doc, char * did);
 int DID_revoke(DID_CTX *ctx, char * did);
 
 
-SSI_VC_CTX *SSI_VC_CTX_new(SSI_VC *vc);
-void SSI_VC_CTX_free(SSI_VC_CTX *ctx);
-SSI_VC *SSI_VC_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *properties);
-char *SSI_VC_create(SSI_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]);
-int SSI_VC_verify(SSI_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]);
-int SSI_VC_deserialize(SSI_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM params[]);
-unsigned char *SSI_VC_serialize(SSI_VC_CTX *ctx, OSSL_PARAM params[]);
-int SSI_VC_CTX_get_params(SSI_VC_CTX *ctx, OSSL_PARAM params[]);
-int SSI_VC_CTX_set_params(SSI_VC_CTX *ctx, OSSL_PARAM params[]);
+EVP_VC_CTX *EVP_VC_CTX_new(EVP_VC *vc);
+void EVP_VC_CTX_free(EVP_VC_CTX *ctx);
+EVP_VC *EVP_VC_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *properties);
+char *EVP_VC_create(EVP_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]);
+int EVP_VC_verify(EVP_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]);
+int EVP_VC_deserialize(EVP_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM params[]);
+unsigned char *EVP_VC_serialize(EVP_VC_CTX *ctx, OSSL_PARAM params[]);
+int EVP_VC_CTX_get_params(EVP_VC_CTX *ctx, OSSL_PARAM params[]);
+int EVP_VC_CTX_set_params(EVP_VC_CTX *ctx, OSSL_PARAM params[]);
 
 #endif
