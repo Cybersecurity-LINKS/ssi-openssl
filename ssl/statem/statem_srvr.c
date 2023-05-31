@@ -92,9 +92,9 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
                 st->hand_state = TLS_ST_SR_CERT;
                 return 1;
             }
-        } else if (s->s3.tmp.did_request) {
-			if (mt == SSL3_MT_DID) {
-				st->hand_state = TLS_ST_SR_DID;
+        } else if (s->s3.tmp.vc_request) {
+			if (mt == SSL3_MT_VC) {
+				st->hand_state = TLS_ST_SR_VC;
 				return 1;
 			}
 		}
@@ -120,7 +120,7 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
         }
         break;
 
-	case TLS_ST_SR_DID:
+	case TLS_ST_SR_VC:
 		if (s->session->peer_did_pubkey == NULL) {
 			if (mt == SSL3_MT_FINISHED) {
 				st->hand_state = TLS_ST_SR_FINISHED;
@@ -493,14 +493,14 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
     case TLS_ST_SW_ENCRYPTED_EXTENSIONS:
         if (s->hit)
             st->hand_state = TLS_ST_SW_FINISHED;
-		else if (s->ext.supporteddidmethods != NULL && send_did_request(s))
-		 	 st->hand_state = TLS_ST_SW_DID_REQ;
+		else if (s->ext.supporteddidmethods != NULL && send_vc_request(s))
+		 	 st->hand_state = TLS_ST_SW_VC_REQ;
 		else if (s->ext.supporteddidmethods == NULL && send_certificate_request(s))
 		 	 st->hand_state = TLS_ST_SW_CERT_REQ;
 		else if (s->auth_method == CERTIFICATE_AUTHN)
 			st->hand_state = TLS_ST_SW_CERT;
 		else
-			st->hand_state = TLS_ST_SW_DID;
+			st->hand_state = TLS_ST_SW_VC;
 
         return WRITE_TRAN_CONTINUE;
 
@@ -508,16 +508,16 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
         if (s->post_handshake_auth == SSL_PHA_REQUEST_PENDING) {
             s->post_handshake_auth = SSL_PHA_REQUESTED;
             st->hand_state = TLS_ST_OK;
-        } else if(s->auth_method == DID_AUTHN) {
-        	st->hand_state = TLS_ST_SW_DID;
+        } else if(s->auth_method == VC_AUTHN) {
+        	st->hand_state = TLS_ST_SW_VC;
         } else {
             st->hand_state = TLS_ST_SW_CERT;
         }
         return WRITE_TRAN_CONTINUE;
 
-	case TLS_ST_SW_DID_REQ:
-		if(s->auth_method == DID_AUTHN)
-			st->hand_state = TLS_ST_SW_DID;
+	case TLS_ST_SW_VC_REQ:
+		if(s->auth_method == VC_AUTHN)
+			st->hand_state = TLS_ST_SW_VC;
 		else
 			st->hand_state = TLS_ST_SW_CERT;
 		return WRITE_TRAN_CONTINUE;
@@ -526,7 +526,7 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
         st->hand_state = TLS_ST_SW_CERT_VRFY;
         return WRITE_TRAN_CONTINUE;
 
-    case TLS_ST_SW_DID:
+    case TLS_ST_SW_VC:
 		st->hand_state = TLS_ST_SW_DID_VRFY;
 		return WRITE_TRAN_CONTINUE;
 
@@ -1104,9 +1104,9 @@ int ossl_statem_server_construct_message(SSL *s, WPACKET *pkt,
         *mt = SSL3_MT_CERTIFICATE;
         break;
 
-	case TLS_ST_SW_DID:
-		*confunc = tls_construct_server_did;
-		*mt = SSL3_MT_DID;
+	case TLS_ST_SW_VC:
+		*confunc = tls_construct_server_vc;
+		*mt = SSL3_MT_VC;
 		break;
 
     case TLS_ST_SW_CERT_VRFY:
@@ -1129,9 +1129,9 @@ int ossl_statem_server_construct_message(SSL *s, WPACKET *pkt,
         *mt = SSL3_MT_CERTIFICATE_REQUEST;
         break;
 
-    case TLS_ST_SW_DID_REQ:
-		*confunc = tls_construct_did_request;
-		*mt = SSL3_MT_DID_REQUEST;
+    case TLS_ST_SW_VC_REQ:
+		*confunc = tls_construct_vc_request;
+		*mt = SSL3_MT_VC_REQUEST;
 		break;
 
     case TLS_ST_SW_SRVR_DONE:
@@ -1215,7 +1215,7 @@ size_t ossl_statem_server_max_message_size(SSL *s)
     case TLS_ST_SR_CERT:
         return s->max_cert_list;
 
-    case TLS_ST_SR_DID:
+    case TLS_ST_SR_VC:
     	return SSL3_RT_MAX_PLAIN_LENGTH;
 
     case TLS_ST_SR_KEY_EXCH:
@@ -1265,8 +1265,8 @@ MSG_PROCESS_RETURN ossl_statem_server_process_message(SSL *s, PACKET *pkt)
     case TLS_ST_SR_CERT:
         return tls_process_client_certificate(s, pkt);
 
-    case TLS_ST_SR_DID:
-    		return tls_process_client_did(s, pkt);
+    case TLS_ST_SR_VC:
+    		return tls_process_client_vc(s, pkt);
 
     case TLS_ST_SR_KEY_EXCH:
         return tls_process_client_key_exchange(s, pkt);
@@ -2312,7 +2312,7 @@ WORK_STATE tls_post_process_client_hello(SSL *s, WORK_STATE wst)
 						&& !tls_choose_sigalg(s, 1)) {
                     /* SSLfatal already called */
                     goto err;
-                } else if (s->auth_method == DID_AUTHN
+                } else if (s->auth_method == VC_AUTHN
 						&& !tls_choose_did_sigalg(s, 1)) {
 					/* SSLfatal already called */
 					goto err;

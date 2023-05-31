@@ -3298,9 +3298,6 @@ SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
     if (!ssl_load_groups(ret))
         goto err2;
 
-//    if(!ssl_load_supported_did_methods(ret))
-//    	goto err2;
-
     if (!SSL_CTX_set_ciphersuites(ret, OSSL_default_ciphersuites()))
         goto err;
 

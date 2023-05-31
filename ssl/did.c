@@ -125,7 +125,7 @@ static int tls13_set_shared_didmethods(SSL *s){
 	return 1;
 }
 
-/* Check if our did is compatible with one of the did methods sent by the peer */
+/* Check if our DID is compatible with one of the DID methods sent by the peer */
 static int is_did_method_supported(SSL *s) {
 
 	size_t i, j;
@@ -151,7 +151,7 @@ int tls13_set_server_did_methods(SSL *s) {
 		return 1;
 	} else if (is_did_method_supported(s)){
 		/* The server has a DID compatible with the client's DID methods */
-		s->auth_method = DID_AUTHN;
+		s->auth_method = VC_AUTHN;
 		if(s->ext.supporteddidmethods != NULL)
 			/* if the server has supported did methods to send set the ones in common with the client */
 			if(!tls13_set_shared_didmethods(s))
@@ -376,7 +376,7 @@ DID* ssl_did_dup(DID *did) {
  *   0: No
  */
 
-int send_did_request(SSL *s) {
+int send_vc_request(SSL *s) {
 	if (
 	/* don't request did unless asked for it: */
 	s->verify_mode & SSL_VERIFY_PEER

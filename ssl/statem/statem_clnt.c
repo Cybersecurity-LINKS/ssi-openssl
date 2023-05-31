@@ -134,13 +134,13 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
                 st->hand_state = TLS_ST_CR_CERT;
                 return 1;
             }
-			if (mt == SSL3_MT_DID_REQUEST) {
-				st->hand_state = TLS_ST_CR_DID_REQ;
+			if (mt == SSL3_MT_VC_REQUEST) {
+				st->hand_state = TLS_ST_CR_VC_REQ;
 				return 1;
 			}
 
-			if (s->s3.did_sent && mt == SSL3_MT_DID) {
-				st->hand_state = TLS_ST_CR_DID;
+			if (s->s3.did_sent && mt == SSL3_MT_VC) {
+				st->hand_state = TLS_ST_CR_VC;
 				return 1;
 			}
         }
@@ -151,19 +151,19 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
             st->hand_state = TLS_ST_CR_CERT;
             return 1;
         }
-		if (s->s3.did_sent && mt == SSL3_MT_DID) {
-			st->hand_state = TLS_ST_CR_DID;
+		if (s->s3.did_sent && mt == SSL3_MT_VC) {
+			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
         break;
 
-    case TLS_ST_CR_DID_REQ:
+    case TLS_ST_CR_VC_REQ:
     	if (!s->s3.did_sent && mt == SSL3_MT_CERTIFICATE){
     		st->hand_state = TLS_ST_CR_CERT;
     		return 1;
     	}
-		if (s->s3.did_sent && mt == SSL3_MT_DID) {
-			st->hand_state = TLS_ST_CR_DID;
+		if (s->s3.did_sent && mt == SSL3_MT_VC) {
+			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
 
@@ -174,7 +174,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         }
         break;
 
-    case TLS_ST_CR_DID:
+    case TLS_ST_CR_VC:
 		if (mt == SSL3_MT_DID_VERIFY) {
 			st->hand_state = TLS_ST_CR_DID_VRFY;
 			return 1;
@@ -485,8 +485,8 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
                                                         : TLS_ST_CW_FINISHED;
         else
 			st->hand_state =
-					(s->s3.tmp.did_req != 0) ?
-							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
+					(s->s3.tmp.vc_req != 0) ?
+							TLS_ST_CW_VC : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_PENDING_EARLY_DATA_END:
@@ -504,8 +504,8 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
     								TLS_ST_CW_CERT : TLS_ST_CW_FINISHED;
 		else
 			st->hand_state =
-					(s->s3.tmp.did_req != 0) ?
-							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
+					(s->s3.tmp.vc_req != 0) ?
+							TLS_ST_CW_VC : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_CW_CERT:
@@ -514,7 +514,7 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
                                                     : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
-    case TLS_ST_CW_DID:
+    case TLS_ST_CW_VC:
     		/* Did can't be empty */
     		st->hand_state = TLS_ST_CW_DID_VRFY;
     		return WRITE_TRAN_CONTINUE;
@@ -974,9 +974,9 @@ int ossl_statem_client_construct_message(SSL *s, WPACKET *pkt,
         *mt = SSL3_MT_CERTIFICATE;
         break;
 
-    case TLS_ST_CW_DID:
-		*confunc = tls_construct_client_did;
-		*mt = SSL3_MT_DID;
+    case TLS_ST_CW_VC:
+		*confunc = tls_construct_client_vc;
+		*mt = SSL3_MT_VC;
 		break;
 
     case TLS_ST_CW_KEY_EXCH:
@@ -1036,7 +1036,7 @@ size_t ossl_statem_client_max_message_size(SSL *s)
     case TLS_ST_CR_CERT:
         return s->max_cert_list;
 
-    case TLS_ST_CR_DID:
+    case TLS_ST_CR_VC:
         return SSL3_RT_MAX_PLAIN_LENGTH;
 
     case TLS_ST_CR_CERT_VRFY:
@@ -1059,7 +1059,7 @@ size_t ossl_statem_client_max_message_size(SSL *s)
          */
         return s->max_cert_list;
 
-	case TLS_ST_CR_DID_REQ:
+	case TLS_ST_CR_VC_REQ:
 		return SSL3_RT_MAX_PLAIN_LENGTH;
 
     case TLS_ST_CR_SRVR_DONE:
@@ -1107,8 +1107,8 @@ MSG_PROCESS_RETURN ossl_statem_client_process_message(SSL *s, PACKET *pkt)
     case TLS_ST_CR_CERT:
         return tls_process_server_certificate(s, pkt);
 
-    case TLS_ST_CR_DID:
-    	return tls_process_server_did(s, pkt);
+    case TLS_ST_CR_VC:
+    	return tls_process_server_vc(s, pkt);
 
     case TLS_ST_CR_CERT_VRFY:
         return tls_process_cert_verify(s, pkt);
@@ -1125,8 +1125,8 @@ MSG_PROCESS_RETURN ossl_statem_client_process_message(SSL *s, PACKET *pkt)
     case TLS_ST_CR_CERT_REQ:
         return tls_process_certificate_request(s, pkt);
 
-    case TLS_ST_CR_DID_REQ:
-    	return tls_process_did_request(s, pkt);
+    case TLS_ST_CR_VC_REQ:
+    	return tls_process_vc_request(s, pkt);
 
     case TLS_ST_CR_SRVR_DONE:
         return tls_process_server_done(s, pkt);

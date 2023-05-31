@@ -1344,8 +1344,6 @@ struct ssl_st {
             EVP_PKEY *pkey;         /* holds short lived key exchange key */
             /* used for certificate requests */
             int cert_req;
-            /* used for did requests */
-            int did_req;
             /* used for vc_requests */
             int vc_req;
             /* Certificate types in certificate request message. */
@@ -1364,7 +1362,6 @@ struct ssl_st {
 # else
             char *new_compression;
 # endif
-            /* int did_request */;
             int vc_request;
             int cert_request;
             /* Raw values of the cipher list from a client */
