@@ -1035,7 +1035,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
-	s->s3.tmp.vc_stream = EVP_VC_deserialize(ctx, params);
+	s->s3.tmp.vc_stream = EVP_VC_serialize(ctx, params);
 	if(s->s3.tmp.vc_stream == NULL)
 		goto err;
 
