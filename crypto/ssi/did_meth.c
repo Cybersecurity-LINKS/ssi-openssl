@@ -5,8 +5,8 @@
 #include <string.h>
 
 #include <openssl/provider.h>
-#include <openssl/ssi.h>
-#include <crypto/ssi.h>
+#include "../../include/crypto/evp_ssi.h"
+#include "../../include/openssl/evp_ssi.h"
 
 
 DID_CTX *DID_CTX_new(OSSL_PROVIDER * provider){

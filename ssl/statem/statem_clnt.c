@@ -1166,12 +1166,14 @@ WORK_STATE ossl_statem_client_post_process_message(SSL *s, WORK_STATE wst)
         return WORK_ERROR;
 
     case TLS_ST_CR_CERT:
-        return tls_post_process_server_certificate(s, wst);
-
+    	if(SSL_IS_TLS13(s) && s->auth_method == VC_AUTHN)
+    		return tls_post_process_server_vc(s, wst);
+    	else
+    		return tls_post_process_server_certificate(s, wst);
     case TLS_ST_CR_CERT_VRFY:
     case TLS_ST_CR_DID_VRFY:
-    	if(SSL_IS_TLS13(s) && s->auth_method == DID_AUTHN)
-    		return tls_prepare_client_did(s, wst);
+    	if(SSL_IS_TLS13(s) && s->auth_method == VC_AUTHN)
+    		return tls_prepare_client_vc(s, wst);
     	else
     		return tls_prepare_client_certificate(s, wst);
     case TLS_ST_CR_CERT_REQ:

@@ -1,9 +1,8 @@
 #ifndef OSSL_CRYPTO_SSI_H
-# define OSSL_CRYPTO_SSI_H
+# define OSSL_CRYPTO_EVP_SSI_H
 # pragma once
 
 # include <openssl/core_dispatch.h>
-# include "../openssl/ssi.h"
 # include <openssl/types.h>
 
 /* DID */
@@ -30,42 +29,14 @@ struct did_document_st {
     int type2;
 };
 
-/* VC */
 
-typedef struct vc {
-	char *atContext;
-	char *id;
-	char *type;
-	char *issuer;
-	char *issuanceDate;
-	char *credentialSubject;
-	char *proofType;
-	char *proofCreated;
-	char *proofPurpose;
-	char *verificationMethod;
-	char *proofValue;
-} vc;
-
-struct ssi_vc_ctx_st {
-     SSI_VC *meth;               /* Method structure */
-    /*
-     * Opaque ctx returned from a providers VC algorithm implementation
-     * OSSL_FUNC_vc_newctx()
-     */
-    void *algctx;
-} /* SSI_VC_CTX */;
-
-
-struct ssi_vc_st {
+struct evp_vc_st {
     OSSL_PROVIDER *prov;
     int name_id;
     char *type_name;
     const char *description;
     CRYPTO_REF_COUNT refcnt;
     CRYPTO_RWLOCK *lock;
-
-    vc *vc;
-	unsigned char *vc_stream;
 
 	OSSL_FUNC_vc_newctx_fn *newctx;
     OSSL_FUNC_vc_create_fn *create;

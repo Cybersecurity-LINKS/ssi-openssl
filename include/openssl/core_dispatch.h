@@ -268,7 +268,7 @@ OSSL_CORE_MAKE_FUNC(int, provider_self_test, (void *provctx))
 # define OSSL_OP_DID                                23
 # define OSSL_OP_VC									24
 /* Highest known operation number */
-# define OSSL_OP__HIGHEST                           23
+# define OSSL_OP__HIGHEST                           24
 
 /* Digests */
 
@@ -985,6 +985,7 @@ OSSL_CORE_MAKE_FUNC(int, vc_set_ctx_params,
                     (void *vcctx, const OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(int, vc_get_ctx_params,
                     (void *vcctx, OSSL_PARAM params[]))
+
 
 # ifdef __cplusplus
 }

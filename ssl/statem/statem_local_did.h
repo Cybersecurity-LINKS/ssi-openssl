@@ -31,13 +31,15 @@ EXT_RETURN tls_construct_ctos_supported_did_methods(SSL *s, WPACKET *pkt, unsign
 int tls_parse_stoc_supported_did_methods(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
         size_t chainidx);
 
-__owur MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt);
+__owur MSG_PROCESS_RETURN tls_process_vc_request(SSL *s, PACKET *pkt);
 
-__owur MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt);
+__owur MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt);
 
-__owur WORK_STATE tls_prepare_client_did(SSL *s, WORK_STATE wst);
+__owur MSG_PROCESS_RETURN tls_post_process_server_vc(SSL *s, WORK_STATE wst);
 
-__owur int tls_construct_client_did(SSL *s, WPACKET *pkt);
+__owur WORK_STATE tls_prepare_client_vc(SSL *s, WORK_STATE wst);
+
+__owur int tls_construct_client_vc(SSL *s, WPACKET *pkt);
 
 /********************************************************
  **************** SERVER METHODS  ***********************
@@ -49,10 +51,10 @@ int tls_parse_ctos_supported_did_methods(SSL *s, PACKET *pkt, unsigned int conte
 EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt, unsigned int context,
         X509 *x, size_t chainidx);
 
-__owur int tls_construct_did_request(SSL *s, WPACKET *pkt);
+__owur int tls_construct_vc_request(SSL *s, WPACKET *pkt);
 
-__owur int tls_construct_server_did(SSL *s, WPACKET *pkt);
+__owur int tls_construct_server_vc(SSL *s, WPACKET *pkt);
 
-__owur MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt);
+__owur MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt);
 
 #endif /* SSL_STATEM_STATEM_LOCAL_DID_H_ */

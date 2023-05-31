@@ -10,7 +10,7 @@
 
 #include "statem_local_did.h"
 #include <openssl/provider.h>
-
+#include <openssl/evp_ssi.h>
 #include "../../include/crypto/ssi.h"
 //#include "/home/pirug/Desktop/C_CRUD/did_method.h"
 
@@ -388,11 +388,11 @@ int tls_parse_stoc_supported_did_methods(SSL *s, PACKET *pkt,
 	return 1;
 }
 
-MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
+MSG_PROCESS_RETURN tls_process_vc_request(SSL *s, PACKET *pkt) {
 
 	size_t i;
 
-	s->auth_method = DID_AUTHN;
+	s->auth_method = VC_AUTHN;
 	/* Clear certificate validity flags */
 	for (i = 0; i < SSL_PKEY_NUM; i++)
 		s->s3.tmp.valid_flags[i] = 0;
@@ -423,9 +423,9 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_LENGTH);
 		return MSG_PROCESS_ERROR;
 	}
-	if (!tls_collect_extensions(s, &extensions, SSL_EXT_TLS1_3_DID_REQUEST,
+	if (!tls_collect_extensions(s, &extensions, SSL_EXT_TLS1_3_VC_REQUEST,
 			&rawexts, NULL, 1) || !tls_parse_all_extensions(s,
-	SSL_EXT_TLS1_3_DID_REQUEST, rawexts, NULL, 0, 1)) {
+	SSL_EXT_TLS1_3_VC_REQUEST, rawexts, NULL, 0, 1)) {
 		/* SSLfatal() already called */
 		OPENSSL_free(rawexts);
 		return MSG_PROCESS_ERROR;
@@ -438,7 +438,7 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 		return MSG_PROCESS_ERROR;
 	}
 
-	/* Check client did compatibility towards did methods provided by the server */
+	/* Check client DID compatibility towards DID methods provided by the server */
 	if (!tls1_process_supported_did_methods(s)){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_BAD_LENGTH);
 		return MSG_PROCESS_ERROR;
@@ -450,7 +450,7 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 	}
 
 	/* we should setup a did to return.... */
-	s->s3.tmp.did_req = 1;
+	s->s3.tmp.vc_req = 1;
 
 	/*
 	 * We don't prepare the client did yet. We wait until
@@ -463,6 +463,179 @@ MSG_PROCESS_RETURN tls_process_did_request(SSL *s, PACKET *pkt) {
 	return MSG_PROCESS_CONTINUE_PROCESSING;*/
 
 	return MSG_PROCESS_CONTINUE_READING;
+}
+
+MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
+
+	size_t vc_len, context;
+
+	EVP_VC_CTX *ctx = NULL;
+	EVP_VC *evp_vc = NULL;
+	OSSL_PARAMS params[13];
+	size_t params_n = 0;
+
+	unsigned char *vc_stream;
+	VC *vc = s->session->peer_vc;
+
+	OSSL_PROVIDER *provider = NULL;
+
+	if (vc == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		return 0;
+	}
+
+	if (!PACKET_get_1(pkt, &context) || context != 0) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
+		return MSG_PROCESS_ERROR;
+	}
+
+	if (!PACKET_get_net_2(pkt, &vc_len)) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
+		return MSG_PROCESS_ERROR;
+	}
+
+	vc_stream = OPENSSL_malloc(sizeof(unsigned char) * vc_len);
+
+	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len)
+			|| PACKET_remaining(pkt) != 0) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
+		return MSG_PROCESS_ERROR;
+	}
+
+	provider = OSSL_provider_load(NULL, "ssiprovider");
+	if (provider == NULL) {
+		printf("SSI provider load failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		return MSG_PROCESS_ERROR;
+	}
+
+	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+		if (evp_vc == NULL)
+			goto err;
+
+	/* Create a context for the vc operation */
+	ctx = EVP_VC_CTX_new(evp_vc);
+	if (ctx == NULL)
+		goto err;
+
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	if(!EVP_VC_deserialize(ctx, vc_stream, params))
+		goto err;
+
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return MSG_PROCESS_CONTINUE_PROCESSING;
+
+err:
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return MSG_PROCESS_ERROR;
+}
+
+WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
+
+	VC *vc = s->session->peer_vc;
+
+	EVP_VC_CTX *ctx = NULL;
+	EVP_VC *evp_vc = NULL;
+	OSSL_PARAMS params[13];
+	size_t params_n = 0, i;
+	EVP_PKEY *pubkey;
+
+	OSSL_PROVIDER *provider = NULL;
+
+	if (vc == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		return 0;
+	}
+
+	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	if (provider == NULL) {
+		printf("SSI provider load failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		goto err;
+	}
+
+	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	if (evp_vc == NULL)
+		goto err;
+
+	/* Create a context for the vc operation */
+	ctx = EVP_VC_CTX_new(evp_vc);
+	if (ctx == NULL)
+		goto err;
+
+	if (vc->atContext != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
+	if (vc->id != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
+	if (vc->type != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
+	if (vc->issuer != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
+	if (vc->issuanceDate != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
+	if (vc->expirationDate != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+	if (vc->credentialSubject != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
+	if (vc->proofType != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
+	if (vc->proofCreated != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
+	if (vc->proofPurpose != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
+	if (vc->verificationMethod != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
+	if (vc->proofValue != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	if(s->trusted_issuers == NULL)
+		return 0;
+
+	for(i = 0; i < s->trusted_issuers_size; i++, s->trusted_issuers++){
+		if(strcmp(s->trusted_issuers->verificationMethod, vc->verificationMethod) == 0)
+			pubkey = s->trusted_issuers->pubkey;
+	}
+
+	if(pubkey == NULL)
+		return 0;
+
+	if(!EVP_VC_verify(ctx, pubkey, params))
+		return 0;
+
+	/* RESOLVE di s->crednetialSubject */
+
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return 1;
+err:
+
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return 0;
 }
 
 MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
@@ -606,7 +779,7 @@ static int tls_check_client_did(SSL *s) {
 	return 1;
 }
 
-WORK_STATE tls_prepare_client_did(SSL *s, WORK_STATE wst){
+WORK_STATE tls_prepare_client_vc(SSL *s, WORK_STATE wst){
 
 	if(wst == WORK_MORE_A){
 		if(tls_check_client_did(s))
@@ -618,7 +791,21 @@ WORK_STATE tls_prepare_client_did(SSL *s, WORK_STATE wst){
 	return WORK_ERROR;
 }
 
-int tls_construct_client_did(SSL *s, WPACKET *pkt){
+int tls_construct_client_vc(SSL *s, WPACKET *pkt){
+
+	VC *vc = s->vc;
+
+	EVP_VC_CTX *ctx = NULL;
+	EVP_VC *evp_vc = NULL;
+	OSSL_PARAMS params[13];
+	size_t params_n = 0;
+
+	OSSL_PROVIDER *provider = NULL;
+
+	if (vc == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		return 0;
+	}
 
 	/* PHA handling could be implemented, check client certificate */
 
@@ -628,16 +815,55 @@ int tls_construct_client_did(SSL *s, WPACKET *pkt){
 		return 0;
 	}
 
-	/* Did method of client did*/
-	if (!WPACKET_put_bytes_u8(pkt, s->did->key->did_method)) {
+	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	if (provider == NULL) {
+		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		goto err;
 	}
 
-	/* The actual did */
-	if (!WPACKET_sub_memcpy_u16(pkt, s->did->key->did, s->did->key->did_len)) {
+	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	if (evp_vc == NULL)
+		goto err;
+
+	/* Create a context for the vc operation */
+	ctx = EVP_VC_CTX_new(evp_vc);
+	if (ctx == NULL)
+		goto err;
+
+	if (vc->atContext != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
+	if (vc->id != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
+	if (vc->type != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
+	if (vc->issuer != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
+	if (vc->issuanceDate != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
+	if (vc->expirationDate != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+	if (vc->credentialSubject != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
+	if (vc->proofType != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
+	if (vc->proofCreated != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
+	if (vc->proofPurpose != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
+	if (vc->verificationMethod != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
+	if (vc->proofValue != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	s->vc_stream = EVP_VC_serialize(ctx, params);
+	if(s->vc_stream == NULL)
+		goto err;
+
+	if (!WPACKET_sub_memcpy_u16(pkt, s->vc_stream, strlen(s->vc_stream))) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		goto err;
 	}
 
 	if (SSL_IS_TLS13(s) && SSL_IS_FIRST_HANDSHAKE(s)
@@ -648,10 +874,21 @@ int tls_construct_client_did(SSL *s, WPACKET *pkt){
 		 * state and thus ssl3_send_alert may crash.
 		 */
 		SSLfatal(s, SSL_AD_NO_ALERT, SSL_R_CANNOT_CHANGE_CIPHER);
-		return 0;
+		goto err;
 	}
 
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
 	return 1;
+
+err:
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return 0;
 }
 
 /********************************************************
@@ -720,7 +957,7 @@ EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt,
 #endif
 }
 
-int tls_construct_did_request(SSL *s, WPACKET *pkt) {
+int tls_construct_vc_request(SSL *s, WPACKET *pkt) {
 
 	/* Request context must be 0-length, unless used for PHA */
 	if (!WPACKET_put_bytes_u8(pkt, 0)) {
@@ -728,46 +965,202 @@ int tls_construct_did_request(SSL *s, WPACKET *pkt) {
 		return 0;
 	}
 
-	if (!tls_construct_extensions(s, pkt, SSL_EXT_TLS1_3_DID_REQUEST, NULL,
+	if (!tls_construct_extensions(s, pkt, SSL_EXT_TLS1_3_VC_REQUEST, NULL,
 			0)) {
 		/* SSLfatal() already called */
 		return 0;
 	}
 
 	/* We don't need s->didreqs_sent here, since it is used with SSL_VERIFY_CLIENT_ONCE */
-	s->s3.tmp.did_request = 1;
+	s->s3.tmp.vc_request = 1;
 
 	return 1;
 }
 
-int tls_construct_server_did(SSL *s, WPACKET *pkt) {
+int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 
-	DID_PKEY *dpk = s->s3.tmp.did;
+	VC *vc = s->s3.tmp.vc;
+	EVP_VC_CTX *ctx = NULL;
+	EVP_VC *evp_vc = NULL;
+	OSSL_PARAMS params[13];
+	size_t params_n = 0;
 
-	if (dpk == NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
-	}
+	OSSL_PROVIDER *provider = NULL;
 
-	/* 0-length context for server Did message */
+	/* 0-length context for server VC message */
 	if (SSL_IS_TLS13(s) && !WPACKET_put_bytes_u8(pkt, 0)) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 	}
 
-	/* 1 byte reserved for the did method of server did*/
-	if (!WPACKET_put_bytes_u8(pkt, dpk->did_method)) {
+	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	if (provider == NULL) {
+		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		goto err;
 	}
 
-	/* contains the actual did */
-	if (!WPACKET_sub_memcpy_u16(pkt, dpk->did, dpk->did_len)) {
+	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	if (evp_vc == NULL)
+		goto err;
+
+	/* Create a context for the vc operation */
+	ctx = EVP_VC_CTX_new(evp_vc);
+	if (ctx == NULL)
+		goto err;
+
+	if(vc->atContext != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
+	if(vc->id != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
+	if(vc->type != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
+	if(vc->issuer != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
+	if(vc->issuanceDate != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
+	if(vc->expirationDate != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+	if(vc->credentialSubject != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
+	if(vc->proofType != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
+	if(vc->proofCreated != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
+	if(vc->proofPurpose != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
+	if(vc->verificationMethod != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
+	if(vc->proofValue != NULL)
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	s->s3.tmp.vc_stream = EVP_VC_deserialize(ctx, params);
+	if(s->s3.tmp.vc_stream == NULL)
+		goto err;
+
+
+	if (!WPACKET_sub_memcpy_u16(pkt, s->s3.tmp.vc_stream,
+			strlen(s->s3.tmp.vc_stream))) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		goto err;
 	}
+
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
 
 	return 1;
+
+err:
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return 0;
+}
+
+MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
+
+	size_t vc_len, context;
+
+	EVP_VC_CTX *ctx = NULL;
+	EVP_VC *evp_vc = NULL;
+	OSSL_PARAMS params[13];
+	size_t params_n = 0, i;
+	EVP_PKEY *pubkey;
+
+	unsigned char *vc_stream;
+	VC *vc = s->session->peer_vc;
+
+	OSSL_PROVIDER *provider = NULL;
+
+	if (vc == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		return 0;
+	}
+
+	s->statem.enc_read_state = ENC_READ_STATE_VALID;
+
+	if ((!PACKET_get_length_prefixed_1(pkt, &context)
+				|| (s->pha_context == NULL && PACKET_remaining(&context) != 0)
+				|| (s->pha_context != NULL
+						&& !PACKET_equal(&context, s->pha_context,
+								s->pha_context_len)))) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_INVALID_CONTEXT);
+		return MSG_PROCESS_ERROR;
+	}
+
+	if (!PACKET_get_net_2(pkt, &vc_len)) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
+		return MSG_PROCESS_ERROR;
+	}
+
+	vc_stream = OPENSSL_malloc(sizeof(unsigned char) * vc_len);
+
+	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len)
+			|| PACKET_remaining(pkt) != 0) {
+		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
+		return MSG_PROCESS_ERROR;
+	}
+
+	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	if (provider == NULL) {
+		printf("SSI provider load failed\n");
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		goto err;
+	}
+
+	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	if (evp_vc == NULL)
+		goto err;
+
+	/* Create a context for the vc operation */
+	ctx = EVP_VC_CTX_new(evp_vc);
+	if (ctx == NULL)
+		goto err;
+
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	if(!EVP_VC_deserialize(ctx, vc_stream, params))
+		goto err;
+
+	if (!ssl3_digest_cached_records(s, 1)) {
+		/* SSLfatal() already called */
+		return MSG_PROCESS_ERROR;
+	}
+
+	/* Save the current hash state for when we receive the DidVerify */
+	if (!ssl_handshake_hash(s, s->did_verify_hash, sizeof(s->did_verify_hash),
+			&s->did_verify_hash_len)) {
+		/* SSLfatal() already called */;
+		return MSG_PROCESS_ERROR;
+	}
+
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return MSG_PROCESS_CONTINUE_PROCESSING;
+
+err:
+	OSSL_PROVIDER_unload(provider);
+	EVP_VC_free(evp_vc);
+	EVP_MD_CTX_free(ctx);
+
+	return MSG_PROCESS_ERROR;
 }
 
 

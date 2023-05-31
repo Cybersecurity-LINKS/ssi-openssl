@@ -557,7 +557,7 @@ extern "C" {
 #define OSSL_VC_PARAM_ISSUANCE_DATE         "issuance-date"
 #define OSSL_VC_PARAM_EXPIRATION_DATE 		"expiration-date"
 #define OSSL_VC_PARAM_SUBJECT               "subject"
-#define OSSL_VC_PARAM_PROOF_TYPE			"type"
+#define OSSL_VC_PARAM_PROOF_TYPE			"proof-type"
 #define OSSL_VC_PARAM_PROOF_CREATED			"proof-created"
 #define OSSL_VC_PARAM_PROOF_PURPOSE			"proof-purpose"
 #define OSSL_VC_PARAM_VERIFICATION_METHOD	"verification-method"

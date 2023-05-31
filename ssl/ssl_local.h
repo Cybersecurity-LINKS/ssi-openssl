@@ -28,7 +28,7 @@
 # include <openssl/symhacks.h>
 # include <openssl/ct.h>
 
-#include "../include/crypto/ssi.h"
+# include <crypto/evp_ssi.h>
 # include "record/record.h"
 # include "statem/statem.h"
 # include "internal/packet.h"
@@ -37,6 +37,7 @@
 # include "internal/tsan_assist.h"
 # include "internal/bio.h"
 # include "internal/ktls.h"
+# include <crypto/vc.h>
 
 # ifdef OPENSSL_BUILD_SHLIBSSL
 #  undef OPENSSL_EXTERN
@@ -589,8 +590,12 @@ struct ssl_session_st {
     X509 *peer;
     /* Certificate chain peer sent. */
     STACK_OF(X509) *peer_chain;
-	/*This is the public key of the did document of the other end */
+	/* This is the public key of the DID document of the other end */
 	EVP_PKEY *peer_did_pubkey;
+	/* This the peer's VC */
+	VC *peer_vc;
+	/* peer serialized VC */
+	/* unsigned char *peer_vc_stream; */
 	/*
      * when app_verify_callback accepts a session where the peer's
      * certificate is not ok, we must remember the error for session reuse:
@@ -980,6 +985,8 @@ struct ssl_ctx_st {
 
     struct cert_st /* CERT */ *cert;
     struct did_st /* DID */ *did;
+    VC *vc;
+    VC_ISSUER *trusted_issuers;
 
     int read_ahead;
 
@@ -1223,7 +1230,8 @@ typedef struct cert_pkey_st CERT_PKEY;
 typedef struct did_pkey_st DID_PKEY;
 
 #define CERTIFICATE_AUTHN 0
-#define DID_AUTHN 1
+/* #define DID_AUTHN 1 */
+#define VC_AUTHN 1
 
 struct ssl_st {
     /*
@@ -1338,6 +1346,8 @@ struct ssl_st {
             int cert_req;
             /* used for did requests */
             int did_req;
+            /* used for vc_requests */
+            int vc_req;
             /* Certificate types in certificate request message. */
             uint8_t *ctype;
             size_t ctype_len;
@@ -1354,7 +1364,8 @@ struct ssl_st {
 # else
             char *new_compression;
 # endif
-            int did_request;
+            /* int did_request */;
+            int vc_request;
             int cert_request;
             /* Raw values of the cipher list from a client */
             unsigned char *ciphers_raw;
@@ -1373,6 +1384,10 @@ struct ssl_st {
             CERT_PKEY *cert;
             /* Pointer to did we use */
             DID_PKEY *did;
+            /* Pointer to the VC we use */
+            VC *vc;
+            /* serialized VC */
+            unsigned char *vc_stream;
             /*
              * signature algorithms peer reports: e.g. supported signature
              * algorithms extension for server or as part of a certificate
@@ -1509,7 +1524,11 @@ struct ssl_st {
     /* client cert? */
     /* This is used to hold the server certificate used */
     struct cert_st /* CERT */ *cert;
-    struct did_st *did;
+    struct did_st /* DID */ *did;
+    VC *vc;
+    unsigned char *vc_stream;
+    VP_ISSUER *trusted_issuers;
+    size_t trusted_issuers_size;
 
     /*
      * The hash of all messages prior to the CertificateVerify, and the length
