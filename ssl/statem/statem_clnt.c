@@ -166,6 +166,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
 			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
+		break;
 
     case TLS_ST_CR_CERT:
         if (mt == SSL3_MT_CERTIFICATE_VERIFY) {
@@ -193,6 +194,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
 			st->hand_state = TLS_ST_CR_FINISHED;
 			return 1;
 		}
+		break;
 
     case TLS_ST_OK:
         if (mt == SSL3_MT_NEWSESSION_TICKET) {

@@ -225,7 +225,7 @@ VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 }
 
 /*
- * Should we send a DidRequest message?
+ * Should we send a VcRequest message?
  *
  * Valid return values are:
  *   1: Yes
@@ -274,7 +274,3 @@ int send_vc_request(SSL *s) {
 
 	return 0;
 }
-
-
-
-

@@ -368,7 +368,6 @@ DID* ssl_did_dup(DID *did) {
 	return ret;
 }
 
-
 static int did_method_lookup_by_name(char *method, int *did_method) {
 
 	size_t i;
