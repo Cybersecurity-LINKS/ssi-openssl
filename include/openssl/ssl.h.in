@@ -794,6 +794,8 @@ __owur int SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
 __owur int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const unsigned char *protos,
                                    unsigned int protos_len);
 __owur int SSL_CTX_set_did_methods(SSL_CTX *ctx, const char *did_methods);
+__owur int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file);
+__owur int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file);
 __owur int SSL_set_alpn_protos(SSL *ssl, const unsigned char *protos,
                                unsigned int protos_len);
 typedef int (*SSL_CTX_alpn_select_cb_func)(SSL *ssl,
@@ -1042,18 +1044,15 @@ typedef enum {
     TLS_ST_PENDING_EARLY_DATA_END,
     TLS_ST_CW_END_OF_EARLY_DATA,
     TLS_ST_SR_END_OF_EARLY_DATA,
-    /* TLS_ST_SW_DID_REQ */,
     TLS_ST_SW_VC_REQ,
-    /* TLS_ST_SW_DID */,
+    TLS_ST_SW_VC,
     TLS_ST_SW_DID_VRFY,
-    TLS_ST_SR_DID,
+    TLS_ST_SR_VC,
     TLS_ST_SR_DID_VRFY,
-    /* TLS_ST_CR_DID_REQ */,
     TLS_ST_CR_VC_REQ,
-	/* TLS_ST_CR_DID */,
 	TLS_ST_CR_VC,
 	TLS_ST_CR_DID_VRFY,
-	TLS_ST_CW_DID,
+	TLS_ST_CW_VC,
 	TLS_ST_CW_DID_VRFY
 } OSSL_HANDSHAKE_STATE;
 

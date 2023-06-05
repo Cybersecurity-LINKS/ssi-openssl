@@ -68,7 +68,7 @@ int DID_DOCUMENT_set_auth_key(DID_DOCUMENT* did_doc, unsigned char* sig, size_t 
         return 0;
     if(did_doc->sig1 != NULL)
         OPENSSL_free(did_doc->sig1);
-        did_doc->sig1 = sig;
+    did_doc->sig1 = sig;
     did_doc->siglen1 = len;
     did_doc->type1 = type;
     return 1;
@@ -79,7 +79,7 @@ int DID_DOCUMENT_set_assertion_key(DID_DOCUMENT* did_doc, unsigned char* sig, si
         return 0;
     if(did_doc->sig2 != NULL)
         OPENSSL_free(did_doc->sig2);
-        did_doc->sig2 = sig;
+    did_doc->sig2 = sig;
     did_doc->siglen2 = len;
     did_doc->type2 = type;
     return 1;

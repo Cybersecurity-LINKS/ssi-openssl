@@ -5442,3 +5442,14 @@ DID_DOCUMENT_get_assertion_key          5569	3_0_4	EXIST::FUNCTION:
 DID_DOCUMENT_set_auth_key               5570	3_0_4	EXIST::FUNCTION:
 DID_DOCUMENT_set_assertion_key          5571	3_0_4	EXIST::FUNCTION:
 OSSL_CMP_CTX_reset_geninfo_ITAVs        ?	3_0_8	EXIST::FUNCTION:CMP
+EVP_VC_CTX_new                          ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_CTX_free                         ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_fetch                            ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_up_ref                           ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_free                             ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_create                           ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_verify                           ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_deserialize                      ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_serialize                        ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_CTX_get_params                   ?	3_0_8	EXIST::FUNCTION:
+EVP_VC_CTX_set_params                   ?	3_0_8	EXIST::FUNCTION:

@@ -125,7 +125,7 @@ static int tls13_set_shared_didmethods(SSL *s){
 	return 1;
 }
 
-/* Check if our did is compatible with one of the did methods sent by the peer */
+/* Check if our DID is compatible with one of the DID methods sent by the peer */
 static int is_did_method_supported(SSL *s) {
 
 	size_t i, j;
@@ -151,7 +151,7 @@ int tls13_set_server_did_methods(SSL *s) {
 		return 1;
 	} else if (is_did_method_supported(s)){
 		/* The server has a DID compatible with the client's DID methods */
-		s->auth_method = DID_AUTHN;
+		s->auth_method = VC_AUTHN;
 		if(s->ext.supporteddidmethods != NULL)
 			/* if the server has supported did methods to send set the ones in common with the client */
 			if(!tls13_set_shared_didmethods(s))
@@ -368,56 +368,6 @@ DID* ssl_did_dup(DID *did) {
 	return ret;
 }
 
-/*
- * Should we send a DidRequest message?
- *
- * Valid return values are:
- *   1: Yes
- *   0: No
- */
-
-int send_did_request(SSL *s) {
-	if (
-	/* don't request did unless asked for it: */
-	s->verify_mode & SSL_VERIFY_PEER
-//			/*
-//			 * don't request if post-handshake-only unless doing
-//			 * post-handshake in TLSv1.3:
-//			 */
-//			&& (!SSL_IS_TLS13(s)
-//					|| !(s->verify_mode & SSL_VERIFY_POST_HANDSHAKE)
-//					|| s->post_handshake_auth == SSL_PHA_REQUEST_PENDING)
-//			/*
-//			 * if SSL_VERIFY_CLIENT_ONCE is set, don't request cert
-//			 * a second time:
-//			 */
-//			&& (s->certreqs_sent < 1
-//					|| !(s->verify_mode & SSL_VERIFY_CLIENT_ONCE))
-//			/*
-//			 * never request cert in anonymous ciphersuites (see
-//			 * section "Certificate request" in SSL 3 drafts and in
-//			 * RFC 2246):
-//			 */
-//			&& (!(s->s3.tmp.new_cipher->algorithm_auth & SSL_aNULL)
-//			/*
-//			 * ... except when the application insists on
-//			 * verification (against the specs, but statem_clnt.c accepts
-//			 * this for SSL 3)
-//			 */
-//			|| (s->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT))
-//			/* don't request certificate for SRP auth */
-//			&& !(s->s3.tmp.new_cipher->algorithm_auth & SSL_aSRP)
-//			/*
-//			 * With normal PSK Did and Did Requests
-//			 * are omitted
-//			 */
-//			&& !(s->s3.tmp.new_cipher->algorithm_auth & SSL_aPSK)
-					) {
-		return 1;
-	}
-
-	return 0;
-}
 
 static int did_method_lookup_by_name(char *method, int *did_method) {
 
@@ -538,6 +488,6 @@ int is_did_handshake(const SSL *s){
 	if(s == NULL || !SSL_IS_TLS13(s))
 		return 0;
 
-	return s->s3.did_sent;
+	return s->s3.did_methods_sent;
 }
 

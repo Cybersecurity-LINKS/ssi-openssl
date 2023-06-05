@@ -470,7 +470,9 @@ typedef enum OPTION_choice {
     OPT_SCTP_LABEL_BUG,
     OPT_R_ENUM, OPT_PROV_ENUM,
 	OPT_DID,
-	OPT_DID_METHODS
+	OPT_DID_METHODS,
+	OPT_VC,
+	OPT_VCIFILE
 } OPTION_CHOICE;
 
 const OPTIONS s_client_options[] = {
@@ -691,13 +693,14 @@ const OPTIONS s_client_options[] = {
      "CA store URI for certificate verification"},
     OPT_X_OPTIONS,
     OPT_PROV_OPTIONS,
-
     OPT_PARAMETERS(),
     {"host:port", 0, 0, "Where to connect; same as -connect option"},
 	{ "did", OPT_DID, 's',
-			"Set the client did to send to the server" },
+			"client DID to send to the server" },
 	{ "did_methods", OPT_DID_METHODS, 's',
-			"list of did methods supported by the client (comma-separated list)" },
+			"list of DID methods supported by the client (comma-separated list)" },
+	{ "vc", OPT_VC, 's', "client's VC"},
+	{ "VCIfile", OPT_VCIFILE, 's', "File that contains the list of VC issuers trusted by the client" },
     {NULL}
 };
 
@@ -910,6 +913,9 @@ int s_client_main(int argc, char **argv)
 
     char *did = NULL;
     const char *did_methods = NULL;
+
+    char *vc_file = NULL;
+    char *vc_issuers_file = NULL;
 
     c_quiet = 0;
     c_debug = 0;
@@ -1479,6 +1485,12 @@ int s_client_main(int argc, char **argv)
 		case OPT_DID_METHODS:
 			did_methods = opt_arg();
 			break;
+		case OPT_VC:
+			vc_file = opt_arg();
+			break;
+		case OPT_VCIFILE:
+			vc_issuers_file = opt_arg();
+			break;
         }
     }
 
@@ -1659,6 +1671,7 @@ int s_client_main(int argc, char **argv)
     if (did)
 		did_pkey = load_key(key_file, 0, 0, NULL,
 				NULL, "client did private key");
+
 
     if (chain_file != NULL) {
         if (!load_certs(chain_file, 0, &chain, pass, "client certificate chain"))
@@ -1941,6 +1954,18 @@ int s_client_main(int argc, char **argv)
 	if (did)
 		if (!set_did_key_stuff(ctx, did_pkey, did))
 			goto end;
+
+	if (vc_file) {
+		if (!SSL_CTX_set_vc(ctx, vc_file)) {
+			BIO_printf(bio_err, "Error setting VC\n");
+			goto end;
+		}
+	}
+
+	if (vc_issuers_file != NULL && !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
+		BIO_printf(bio_err, "Error setting trusted VC issuers\n");
+		goto end;
+	}
 
     if (!noservername) {
         tlsextcbp.biodebug = bio_err;

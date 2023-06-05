@@ -36,8 +36,6 @@ DID *ssl_did_new(void);
 
 DID *ssl_did_dup(DID *did);
 
-__owur int send_did_request(SSL *s);
-
 int tls1_process_supported_did_methods(SSL *s);
 
 #endif /* SSL_SSL_LOCAL_DID_H_ */

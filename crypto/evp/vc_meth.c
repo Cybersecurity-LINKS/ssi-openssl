@@ -1,18 +1,12 @@
-/*
- * vc_meth.c
- *
- *  Created on: May 25, 2023
- *      Author: pirug
- */
-
-#include <openssl/evp_ssi.h>
+#include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 #include "internal/provider.h"
 #include "internal/core.h"
+#include "crypto/evp.h"
+#include "evp_local.h"
 #include "crypto/evp_ssi.h"
-#include "evp_local_ssi.h"
 
 static int evp_vc_up_ref(void *vvc)
 {
@@ -46,7 +40,7 @@ static void *evp_vc_new(void)
 
     if ((vc = OPENSSL_zalloc(sizeof(*vc))) == NULL
         || (vc->lock = CRYPTO_THREAD_lock_new()) == NULL) {
-        evp_mac_free(vc);
+        evp_vc_free(vc);
         return NULL;
     }
 
@@ -70,7 +64,7 @@ static void *evp_vc_from_algorithm(int name_id,
     }
     vc->name_id = name_id;
     if ((vc->type_name = ossl_algorithm_get1_first_name(algodef)) == NULL) {
-        evp_mac_free(vc);
+        evp_vc_free(vc);
         return NULL;
     }
     vc->description = algodef->algorithm_description;
@@ -146,7 +140,7 @@ static void *evp_vc_from_algorithm(int name_id,
 
 EVP_VC *EVP_VC_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *properties)
 {
-	EVP_MD *vc =
+	EVP_VC *vc =
 	        evp_generic_fetch(libctx, OSSL_OP_VC, algorithm, properties,
 	                          evp_vc_from_algorithm, evp_vc_up_ref, evp_vc_free);
 

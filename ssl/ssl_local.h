@@ -987,6 +987,7 @@ struct ssl_ctx_st {
     struct did_st /* DID */ *did;
     VC *vc;
     VC_ISSUER *trusted_issuers;
+    size_t trusted_issuers_num;
 
     int read_ahead;
 
@@ -1344,8 +1345,6 @@ struct ssl_st {
             EVP_PKEY *pkey;         /* holds short lived key exchange key */
             /* used for certificate requests */
             int cert_req;
-            /* used for did requests */
-            int did_req;
             /* used for vc_requests */
             int vc_req;
             /* Certificate types in certificate request message. */
@@ -1364,7 +1363,6 @@ struct ssl_st {
 # else
             char *new_compression;
 # endif
-            /* int did_request */;
             int vc_request;
             int cert_request;
             /* Raw values of the cipher list from a client */
@@ -1455,7 +1453,7 @@ struct ssl_st {
         /* used by the client to know if it actually sent alpn */
         int alpn_sent;
         /* used by client to know if it actually sent DID methods*/
-        int did_sent;
+        int did_methods_sent;
 
         /*
          * This is set to true if we believe that this is a version of Safari
@@ -1527,8 +1525,8 @@ struct ssl_st {
     struct did_st /* DID */ *did;
     VC *vc;
     unsigned char *vc_stream;
-    VP_ISSUER *trusted_issuers;
-    size_t trusted_issuers_size;
+    VC_ISSUER *trusted_issuers;
+    size_t trusted_issuers_num;
 
     /*
      * The hash of all messages prior to the CertificateVerify, and the length

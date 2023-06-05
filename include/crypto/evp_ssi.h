@@ -4,6 +4,7 @@
 
 # include <openssl/core_dispatch.h>
 # include <openssl/types.h>
+# include "internal/refcount.h"
 
 /* DID */
 

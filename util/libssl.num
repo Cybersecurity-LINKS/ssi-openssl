@@ -524,3 +524,5 @@ SSL_CTX_set_did_methods                 ?	3_0_8	EXIST::FUNCTION:
 SSL_get0_peer_did                       ?	3_0_8	EXIST::FUNCTION:
 is_did_handshake                        ?	3_0_8	EXIST::FUNCTION:
 SSL_CTX_use_did_PrivateKey              ?	3_0_8	EXIST::FUNCTION:
+SSL_CTX_set_vc                          ?	3_0_8	EXIST::FUNCTION:
+SSL_CTX_set_vc_issuers                  ?	3_0_8	EXIST::FUNCTION:

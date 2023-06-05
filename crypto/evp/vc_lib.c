@@ -54,20 +54,22 @@ int EVP_VC_deserialize(EVP_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM par
 	return ctx->meth->deserialize(ctx->algctx, vc_stream, params);
 }
 
-unsigned char *EVP_VC_serialize(EVP_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM params[]) {
+unsigned char *EVP_VC_serialize(EVP_VC_CTX *ctx, OSSL_PARAM params[]) {
 
-	return ctx->meth->serialize(ctx->algctx, vc_stream, params);
+	return ctx->meth->serialize(ctx->algctx, params);
 }
 
 int EVP_VC_CTX_get_params(EVP_VC_CTX *ctx, OSSL_PARAM params[]){
 
 	if (ctx->meth->get_ctx_params != NULL)
 		return ctx->meth->get_ctx_params(ctx->algctx, params);
+	return 1;
 }
 
 int EVP_VC_CTX_set_params(EVP_VC_CTX *ctx, OSSL_PARAM params[]){
 
 	if (ctx->meth->set_ctx_params != NULL)
 		return ctx->meth->set_ctx_params(ctx->algctx, params);
+	return 1;
 }
 

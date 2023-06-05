@@ -40,7 +40,7 @@ void EVP_VC_free(EVP_VC *vc);
 char *EVP_VC_create(EVP_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]);
 int EVP_VC_verify(EVP_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]);
 int EVP_VC_deserialize(EVP_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM params[]);
-unsigned char *EVP_VC_serialize(EVP_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM params[]);
+unsigned char *EVP_VC_serialize(EVP_VC_CTX *ctx, OSSL_PARAM params[]);
 int EVP_VC_CTX_get_params(EVP_VC_CTX *ctx, OSSL_PARAM params[]);
 int EVP_VC_CTX_set_params(EVP_VC_CTX *ctx, OSSL_PARAM params[]);
 

@@ -35,7 +35,7 @@ __owur MSG_PROCESS_RETURN tls_process_vc_request(SSL *s, PACKET *pkt);
 
 __owur MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt);
 
-__owur MSG_PROCESS_RETURN tls_post_process_server_vc(SSL *s, WORK_STATE wst);
+__owur WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst);
 
 __owur WORK_STATE tls_prepare_client_vc(SSL *s, WORK_STATE wst);
 

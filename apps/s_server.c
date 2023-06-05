@@ -723,7 +723,9 @@ typedef enum OPTION_choice {
     OPT_X_ENUM,
     OPT_PROV_ENUM,
 	OPT_DID,
-	OPT_DID_METHODS
+	OPT_DID_METHODS,
+	OPT_VC,
+	OPT_VCIFILE
 } OPTION_CHOICE;
 
 const OPTIONS s_server_options[] = {
@@ -966,7 +968,9 @@ const OPTIONS s_server_options[] = {
 			"Set the server did to send to the client" },
 	{ "did_methods", OPT_DID_METHODS, 's',
 			"list of did methods supported by the server (comma-separated list)" },
-    OPT_R_OPTIONS,
+	{ "vc", OPT_VC, 's', "server's VC"},
+	{ "VCIfile", OPT_VCIFILE, 's', "File that contains the list of VC issuers trusted by the server" },
+	OPT_R_OPTIONS,
     OPT_S_OPTIONS,
     OPT_V_OPTIONS,
     OPT_X_OPTIONS,
@@ -1061,6 +1065,9 @@ int s_server_main(int argc, char *argv[])
     int ignore_unexpected_eof = 0;
     char *did = NULL;
     const char *did_methods = NULL;
+
+    char *vc_file = NULL;
+    char *vc_issuers_file = NULL;
 
     /* Init of few remaining global variables */
     local_argc = argc;
@@ -1656,6 +1663,12 @@ int s_server_main(int argc, char *argv[])
 		case OPT_DID_METHODS:
 			did_methods = opt_arg();
 			break;
+		case OPT_VC:
+			vc_file = opt_arg();
+			break;
+		case OPT_VCIFILE:
+			vc_issuers_file = opt_arg();
+			break;
         }
     }
 
@@ -1769,6 +1782,7 @@ int s_server_main(int argc, char *argv[])
     if (did)
 		did_pkey = load_key(s_key_file, 0, 0, NULL,
 		NULL, "server did private key");
+
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
     if (next_proto_neg_in) {
         next_proto.data = next_protos_parse(&next_proto.len, next_proto_neg_in);
@@ -2115,6 +2129,18 @@ int s_server_main(int argc, char *argv[])
 			goto end;
 		}
 	}
+
+	if (vc_file) {
+		if (!SSL_CTX_set_vc(ctx, vc_file)) {
+			BIO_printf(bio_err, "Error setting VC\n");
+			goto end;
+	}
+
+	if (vc_issuers_file != NULL && !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
+		BIO_printf(bio_err, "Error setting trusted VC issuers\n");
+		goto end;
+	}
+}
 
     if (s_serverinfo_file != NULL
         && !SSL_CTX_use_serverinfo_file(ctx, s_serverinfo_file)) {

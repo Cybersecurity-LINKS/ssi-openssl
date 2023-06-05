@@ -10,6 +10,8 @@
 
 #include <openssl/types.h>
 
+/* VC */
+
 typedef struct vc {
 	char *atContext;
 	char *id;
@@ -26,10 +28,7 @@ typedef struct vc {
 } vc;
 
 struct evp_vc_ctx_st {
-     SSI_VC *meth;               /* Method structure */
-
-     vc *vc;
-     unsigned char *vc_stream;
+	EVP_VC *meth;               /* Method structure */
     /*
      * Opaque ctx returned from a providers VC algorithm implementation
      * OSSL_FUNC_vc_newctx()
