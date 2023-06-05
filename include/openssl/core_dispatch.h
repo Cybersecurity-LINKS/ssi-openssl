@@ -948,10 +948,10 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
   *
   */
 
- #define OSSL_FUNC_DID_CREATE                        1
- #define OSSL_FUNC_DID_RESOLVE                       2
- #define OSSL_FUNC_DID_UPDATE                        3
- #define OSSL_FUNC_DID_REVOKE                        4
+#define OSSL_FUNC_DID_CREATE                        1
+#define OSSL_FUNC_DID_RESOLVE                       2
+#define OSSL_FUNC_DID_UPDATE                        3
+#define OSSL_FUNC_DID_REVOKE                        4
 
 OSSL_CORE_MAKE_FUNC(void *, did_create, (void *sig1, size_t siglen1,
 						 int type1, void *sig2, size_t siglen2, int type2))
@@ -976,7 +976,7 @@ OSSL_CORE_MAKE_FUNC(int, did_revoke, (char * index))
 #define OSSL_FUNC_VC_GET_CTX_PARAMS            		8
 
 OSSL_CORE_MAKE_FUNC(void *, vc_newctx, (void *provctx))
-OSSL_CORE_MAKE_FUNC(void *, vc_create, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(char *, vc_create, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(int, vc_verify, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(unsigned char *, vc_serialize, (void *vcctx, OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(int, vc_deserialize, (void *vcctx, unsigned char *vc_stream, OSSL_PARAM params[]))
