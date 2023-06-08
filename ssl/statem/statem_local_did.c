@@ -510,7 +510,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 		if (evp_vc == NULL)
 			goto err;
 
@@ -580,7 +580,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 		goto err;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -887,7 +887,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 		goto err;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -1065,7 +1065,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 		goto err;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -1182,7 +1182,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 		goto err;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
 		goto err;
 

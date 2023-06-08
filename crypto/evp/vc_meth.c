@@ -43,9 +43,7 @@ static void *evp_vc_new(void)
         evp_vc_free(vc);
         return NULL;
     }
-
     vc->refcnt = 1;
-
     return vc;
 }
 
@@ -120,7 +118,7 @@ static void *evp_vc_from_algorithm(int name_id,
             break;
         }
     }
-    if (fnvccnt != 1
+    if (fnvccnt < 1
         || fnctxcnt != 2) {
         /*
          * In order to be a consistent set of functions we must have at least
