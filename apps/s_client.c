@@ -699,7 +699,7 @@ const OPTIONS s_client_options[] = {
 			"client DID to send to the server" },
 	{ "did_methods", OPT_DID_METHODS, 's',
 			"list of DID methods supported by the client (comma-separated list)" },
-	{ "vc", OPT_VC, 's', "client's VC"},
+	{ "vc", OPT_VC, 's', "File that contains client's VC"},
 	{ "VCIfile", OPT_VCIFILE, 's', "File that contains the list of VC issuers trusted by the client" },
     {NULL}
 };

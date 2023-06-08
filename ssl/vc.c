@@ -13,6 +13,8 @@
 #include <openssl/core_names.h>
 #include <crypto/vc.h>
 #include <ssl/ssl_local.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 
@@ -29,7 +31,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 	unsigned char *vc_stream;
 
 	vc_fp = fopen(vc_file, "r");
-	if (vc_file == NULL)
+	if (vc_fp == NULL)
 		return 0;
 
 	fseek(vc_fp, 0, SEEK_END);
@@ -41,9 +43,9 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 		vc_stream[n++] = (unsigned char)c;
 	}
 
-	vc_stream[n] = '\0';
+	printf("%s\n", vc_stream);
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		ERR_raise(ERR_LIB_PROV, ERR_R_INIT_FAIL);
 		return 0;
@@ -55,21 +57,21 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 
 	/* Create a context for the vc operation */
 	evp_ctx = EVP_VC_CTX_new(evp_vc);
-	if (ctx == NULL)
+	if (evp_ctx == NULL)
 		goto err;
 
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, ctx->vc->atContext, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, ctx->vc->id, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, ctx->vc->type, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, ctx->vc->issuer, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, ctx->vc->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, ctx->vc->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, ctx->vc->credentialSubject, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, ctx->vc->proofType, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, ctx->vc->proofCreated, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, ctx->vc->proofPurpose, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, ctx->vc->verificationMethod, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, ctx->vc->proofValue, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_CONTEXT, &ctx->vc->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ID, &ctx->vc->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_TYPE, &ctx->vc->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUER, &ctx->vc->issuer, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUANCE_DATE, &ctx->vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_EXPIRATION_DATE, &ctx->vc->expirationDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_SUBJECT, &ctx->vc->credentialSubject, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_TYPE, &ctx->vc->proofType, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_CREATED, &ctx->vc->proofCreated, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_PURPOSE, &ctx->vc->proofPurpose, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_VERIFICATION_METHOD, &ctx->vc->verificationMethod, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_VALUE, &ctx->vc->proofValue, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
 	if(!EVP_VC_deserialize(evp_ctx, vc_stream, params))

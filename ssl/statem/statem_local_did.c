@@ -503,7 +503,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -573,7 +573,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 		return WORK_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -880,7 +880,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 		return 0;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -1058,7 +1058,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 		return 0;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -1175,7 +1175,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
