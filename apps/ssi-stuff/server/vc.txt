@@ -1,0 +1,18 @@
+{
+	"@context":	"https://www.w3.org/2018/credentials/v1",
+	"id":	"http://example.com/credentials/1",
+	"type":	"VerifiableCredential",
+	"issuer":	"http://example.com/issuer/1",
+	"issuanceDate":	"2023-06-09T16:42:46Z",
+	"expirationDate":	"2025-01-01T12:00:00Z",
+	"credentialSubject":	{
+		"id":	"did:ott:0726D1CC750C612C1E91608261BC374510949569E7A0B9CC8FE95008D7C9ABE3"
+	},
+	"proof":	{
+		"type":	"Ed25519VerificationKey2023",
+		"created":	" 2023-06-09T16:45:04Z",
+		"proofPurpose":	"assertionMethod",
+		"verificationMethod":	"http://example.com/issuer/1#key-2",
+		"proofValue":	"eW1XWuftUqsK7yD+3NXsccb5zRcJmbNDgpmqG+yx7Sv8Y8Qkb3cV7RUqrepBo0Imy2kfmjuTrjKW0k9nt2EcBw=="
+	}
+}

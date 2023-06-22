@@ -475,14 +475,21 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	size_t params_n = 0;
 
 	unsigned char *vc_stream;
-	s->session->peer_vc = OPENSSL_malloc(sizeof(VC));
+	s->session->peer_vc = OPENSSL_zalloc(sizeof(VC));
 	VC *vc = s->session->peer_vc;
 
 	OSSL_PROVIDER *provider = NULL;
 
+
 	if (vc == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		return MSG_PROCESS_ERROR;
+	}
+
+	VC *tmp = OPENSSL_zalloc(sizeof(*tmp));
+	if (tmp == NULL) {
+		ERR_raise(ERR_LIB_PROV, ERR_R_MALLOC_FAILURE);
+		return MSG_PROCESS_ERROR;
 	}
 
 	if (!PACKET_get_1(pkt, &context) || context != 0) {
@@ -495,7 +502,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	vc_stream = OPENSSL_malloc(sizeof(unsigned char) * vc_len);
+	vc_stream = OPENSSL_zalloc(sizeof(unsigned char) * vc_len);
 
 	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len)
 			|| PACKET_remaining(pkt) != 0) {
@@ -503,7 +510,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -511,34 +518,48 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	}
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
-		if (evp_vc == NULL)
-			goto err;
+	if (evp_vc == NULL)
+		goto err;
 
 	/* Create a context for the vc operation */
 	ctx = EVP_VC_CTX_new(evp_vc);
 	if (ctx == NULL)
 		goto err;
 
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_CONTEXT, &tmp->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ID, &tmp->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_TYPE, &tmp->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUER, &tmp->issuer, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUANCE_DATE, &tmp->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_EXPIRATION_DATE, &tmp->expirationDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_SUBJECT, &tmp->credentialSubject, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_TYPE, &tmp->proofType, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_CREATED, &tmp->proofCreated, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_PURPOSE, &tmp->proofPurpose, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_VERIFICATION_METHOD, &tmp->verificationMethod, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_VALUE, &tmp->proofValue, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
 	if(!EVP_VC_deserialize(ctx, vc_stream, params))
 		goto err;
 
+	vc->atContext = OPENSSL_strdup(tmp->atContext);
+	vc->id = OPENSSL_strdup(tmp->id);
+	vc->type = OPENSSL_strdup(tmp->type);
+	vc->issuer = OPENSSL_strdup(tmp->issuer);
+	vc->issuanceDate = OPENSSL_strdup(tmp->issuanceDate);
+	vc->expirationDate = OPENSSL_strdup(tmp->expirationDate);
+	vc->credentialSubject = OPENSSL_strdup(tmp->credentialSubject);
+	vc->proofType = OPENSSL_strdup(tmp->proofType);
+	vc->proofCreated = OPENSSL_strdup(tmp->proofCreated);
+	vc->proofPurpose = OPENSSL_strdup(tmp->proofPurpose);
+	vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
+	vc->proofValue = OPENSSL_strdup(tmp->proofValue);
+
 	OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
+	OPENSSL_free(tmp);
 
 	return MSG_PROCESS_CONTINUE_PROCESSING;
 
@@ -546,6 +567,7 @@ err:
 	OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
+	OPENSSL_free(tmp);
 
 	return MSG_PROCESS_ERROR;
 }
@@ -573,7 +595,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 		return WORK_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -600,7 +622,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 	if (vc->issuanceDate != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
 	if (vc->expirationDate != NULL)
-		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->expirationDate, 0);
 	if (vc->credentialSubject != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
 	if (vc->proofType != NULL)
@@ -618,10 +640,11 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 	if(s->trusted_issuers == NULL)
 		goto err;
 
-	for(p = s->trusted_issuers, i = 0; i < s->trusted_issuers_num; i++, p++){
+	/*for(p = s->trusted_issuers, i = 0; i < s->trusted_issuers_num; i++, p++){
 		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
 			issuer_pubkey = p->pubkey;
-	}
+	}*/
+	issuer_pubkey = s->trusted_issuers->pubkey;
 
 	if(issuer_pubkey == NULL)
 		goto err;
@@ -880,7 +903,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 		return 0;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -907,7 +930,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 	if (vc->issuanceDate != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
 	if (vc->expirationDate != NULL)
-		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->expirationDate, 0);
 	if (vc->credentialSubject != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
 	if (vc->proofType != NULL)
@@ -1036,7 +1059,7 @@ int tls_construct_vc_request(SSL *s, WPACKET *pkt) {
 		return 0;
 	}
 
-	/* We don't need s->didreqs_sent here, since it is used with SSL_VERIFY_CLIENT_ONCE */
+	/* We don't need s->vcreqs_sent here, since it is used with SSL_VERIFY_CLIENT_ONCE */
 	s->s3.tmp.vc_request = 1;
 
 	return 1;
@@ -1058,7 +1081,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 		return 0;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -1085,7 +1108,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 	if(vc->issuanceDate != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
 	if(vc->expirationDate != NULL)
-		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->expirationDate, 0);
 	if(vc->credentialSubject != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
 	if(vc->proofType != NULL)
@@ -1175,7 +1198,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssiprovider");
+	provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -1196,7 +1219,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
 	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
 	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->expirationDate, 0);
 	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
 	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
 	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
@@ -1225,7 +1248,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	if (vc->issuanceDate != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
 	if (vc->expirationDate != NULL)
-		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->issuanceDate, 0);
+		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->expirationDate, 0);
 	if (vc->credentialSubject != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
 	if (vc->proofType != NULL)

@@ -291,6 +291,7 @@ int tls_choose_did_sigalg(SSL *s, int fatalerrs) {
 	s->s3.tmp.did = &s->did->pkeys[sig_idx];
 	s->did->key = s->s3.tmp.did;
 	s->s3.tmp.sigalg = lu;
+	s->s3.tmp.vc = s->vc;
 	return 1;
 }
 
