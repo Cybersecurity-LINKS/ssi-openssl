@@ -1,0 +1,18 @@
+{
+	"@context":	"https://www.w3.org/2018/credentials/v1",
+	"id":	"http://example.com/credentials/1",
+	"type":	"VerifiableCredential",
+	"issuer":	"http://example.com/issuer/1",
+	"issuanceDate":	"2023-06-08T14:35:26Z",
+	"expirationDate":	"2025-01-01T12:00:00Z",
+	"credentialSubject":	{
+		"id":	"did:example:abcdefghi"
+	},
+	"proof":	{
+		"type":	"RsaVerificationKey2023",
+		"created":	" 2023-06-08T14:35:26Z",
+		"proofPurpose":	"assertionMethod",
+		"verificationMethod":	"http://example.com/issuer/1#key-2",
+		"proofValue":	"POZINkp1BRc5by0LM6k3uV6ezH9oN9EQN3qJfDylW26zGnk8W5XjKDVCU9Fe6uaKUffmqRz40hMM7gpd7JAjDR48BYRyINnYV8uYMsnzRk4s82y+iyN4mBNy5OEPxhXvqPrAj15Uc/ByEbcRkl1rJK2I8QgEuFzSBH4uQDmfOzBRWmJ2UQevyjJdMZGZBbcL7ZTXrR6++SEYo7ejaAt7ZO+6ckw/Wdfvc7K2usHLvVquD6Aqemg4wYfzDe3+7GBVC/ThWgyywlu0FbJsw2SPgE5OZoxybVNfKN6beUc71l0pjbK1QImWOJZobjadBFE5BFpAtGXFa/zUN2UcjJsUHw=="
+	}
+}
