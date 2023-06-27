@@ -234,13 +234,13 @@ VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 		return NULL;
 	}
 
-	for(i = 0; i < issuers_num; i++){
-		ret[i].pubkey = issuers[i].pubkey;
-		EVP_PKEY_up_ref(issuers[i].pubkey);
+	//for(i = 0; i < issuers_num; i++){
+	//	ret[i].pubkey = issuers[i].pubkey;
+	//	EVP_PKEY_up_ref(issuers[i].pubkey);
 		/*ret[i].verificationMethod = OPENSSL_memdup(issuers[i].verificationMethod, strlen(issuers[i].verificationMethod));*/
-	}
+	//}
 
-
+	ret->pubkey = issuers->pubkey;
 
 	return ret;
 }

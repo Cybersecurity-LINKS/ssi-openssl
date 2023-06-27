@@ -706,6 +706,13 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 		goto err;
 	}
 
+	/* Save the current hash state for when we receive the DidVerify */
+	if (!ssl_handshake_hash(s, s->did_verify_hash, sizeof(s->did_verify_hash),
+			&s->did_verify_hash_len)) {
+		/* SSLfatal() already called */;
+		goto err;
+	}
+
 	OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
@@ -1162,6 +1169,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	int ret;
 
 	unsigned char *vc_stream;
+	s->session->peer_vc = OPENSSL_zalloc(sizeof(VC));
 	VC *vc = s->session->peer_vc;
 
 	OSSL_PROVIDER *provider = NULL;
@@ -1172,6 +1180,12 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	if (vc == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
+	}
+
+	VC *tmp = OPENSSL_zalloc(sizeof(*tmp));
+	if (tmp == NULL) {
+		ERR_raise(ERR_LIB_PROV, ERR_R_MALLOC_FAILURE);
+		return MSG_PROCESS_ERROR;
 	}
 
 	s->statem.enc_read_state = ENC_READ_STATE_VALID;
@@ -1214,28 +1228,43 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	if (ctx == NULL)
 		goto err;
 
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ID, vc->id, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_TYPE, vc->type, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUER, vc->issuer, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_ISSUANCE_DATE, vc->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_EXPIRATION_DATE, vc->expirationDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_SUBJECT, vc->credentialSubject, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_TYPE, vc->proofType, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_CREATED, vc->proofCreated, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_PURPOSE, vc->proofPurpose, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_VERIFICATION_METHOD, vc->verificationMethod, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_CONTEXT, &tmp->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ID, &tmp->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_TYPE, &tmp->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUER, &tmp->issuer, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUANCE_DATE, &tmp->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_EXPIRATION_DATE, &tmp->expirationDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_SUBJECT, &tmp->credentialSubject, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_TYPE, &tmp->proofType, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_CREATED, &tmp->proofCreated, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_PURPOSE, &tmp->proofPurpose, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_VERIFICATION_METHOD, &tmp->verificationMethod, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_VALUE, &tmp->proofValue, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
 	if(!EVP_VC_deserialize(ctx, vc_stream, params))
 		goto err;
+
+	vc->atContext = OPENSSL_strdup(tmp->atContext);
+	vc->id = OPENSSL_strdup(tmp->id);
+	vc->type = OPENSSL_strdup(tmp->type);
+	vc->issuer = OPENSSL_strdup(tmp->issuer);
+	vc->issuanceDate = OPENSSL_strdup(tmp->issuanceDate);
+	vc->expirationDate = OPENSSL_strdup(tmp->expirationDate);
+	vc->credentialSubject = OPENSSL_strdup(tmp->credentialSubject);
+	vc->proofType = OPENSSL_strdup(tmp->proofType);
+	vc->proofCreated = OPENSSL_strdup(tmp->proofCreated);
+	vc->proofPurpose = OPENSSL_strdup(tmp->proofPurpose);
+	vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
+	vc->proofValue = OPENSSL_strdup(tmp->proofValue);
 
 	EVP_VC_CTX_free(ctx);
 
 	ctx = EVP_VC_CTX_new(evp_vc);
 	if (ctx == NULL)
 		goto err;
+
+	params_n = 0;
 
 	if (vc->atContext != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
@@ -1264,31 +1293,32 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	params[params_n] = OSSL_PARAM_construct_end();
 
 	if(s->trusted_issuers == NULL)
-			return 0;
+			goto err;
 
-	for(i = 0, p = s->trusted_issuers; i < s->trusted_issuers_num; i++, p++){
+	/*for(i = 0, p = s->trusted_issuers; i < s->trusted_issuers_num; i++, p++){
 		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
 			issuer_pubkey = p->pubkey;
-	}
+	}*/
 
+	issuer_pubkey = s->trusted_issuers->pubkey;
 	if(issuer_pubkey == NULL)
-		return 0;
+		goto err;
 
 	if(!EVP_VC_verify(ctx, issuer_pubkey, params))
-		return 0;
+		goto err;
 
 	didctx = DID_CTX_new(provider);
 	if (didctx == NULL) {
 		printf("DID CTX new failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return MSG_PROCESS_ERROR;
+		goto err;
 	}
 
 	did_doc = DID_DOCUMENT_new();
 	if (did_doc == NULL) {
 		printf("DID document new failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return MSG_PROCESS_ERROR;
+		goto err;
 	}
 
 	DID_fetch(NULL, didctx, "OTT", "property");
@@ -1299,17 +1329,17 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	case DID_INTERNAL_ERROR:
 		printf("DID method internal error\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return -1;
+		goto err;
 		break;
 	case DID_NOT_FOUD:
 		printf("DID document not found\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		goto err;
 		break;
 	case DID_REVOKED:
 		printf("DID %s REVOKED\n", vc->credentialSubject);
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
+		goto err;
 		break;
 	case DID_OK:
 		printf("DID %s FOUND\n", vc->credentialSubject);
@@ -1321,25 +1351,25 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	if ((did_pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1))
 			== NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return MSG_PROCESS_ERROR;
+		goto err;
 	}
 
 	if ((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL,
 	NULL)) == NULL) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
-		return MSG_PROCESS_ERROR;
+		goto err;
 	}
 
 	if (!ssl3_digest_cached_records(s, 1)) {
 		/* SSLfatal() already called */
-		return MSG_PROCESS_ERROR;
+		goto err;
 	}
 
 	/* Save the current hash state for when we receive the DidVerify */
 	if (!ssl_handshake_hash(s, s->did_verify_hash, sizeof(s->did_verify_hash),
 			&s->did_verify_hash_len)) {
 		/* SSLfatal() already called */;
-		return MSG_PROCESS_ERROR;
+		goto err;
 	}
 
 	OSSL_PROVIDER_unload(provider);
@@ -1349,7 +1379,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	DID_DOCUMENT_free(did_doc);
 	DID_CTX_free(didctx);
 
-	return MSG_PROCESS_CONTINUE_PROCESSING;
+	return MSG_PROCESS_CONTINUE_READING;
 
 err:
 	OSSL_PROVIDER_unload(provider);
