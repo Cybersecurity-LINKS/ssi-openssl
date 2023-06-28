@@ -477,7 +477,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	s->session->peer_vc = OPENSSL_zalloc(sizeof(VC));
 	VC *vc = s->session->peer_vc;
 
-	OSSL_PROVIDER *provider = NULL;
+	//OSSL_PROVIDER *provider = NULL;
 
 
 	if (vc == NULL) {
@@ -509,12 +509,12 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssi");
+	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
-	}
+	}*/
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
@@ -555,7 +555,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
 	vc->proofValue = OPENSSL_strdup(tmp->proofValue);
 
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 	OPENSSL_free(tmp);
@@ -563,7 +563,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	return MSG_PROCESS_CONTINUE_PROCESSING;
 
 err:
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 	OPENSSL_free(tmp);
@@ -713,7 +713,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 		goto err;
 	}
 
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
@@ -723,7 +723,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 	return WORK_FINISHED_CONTINUE;
 err:
 
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
@@ -766,7 +766,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 
-	OSSL_PROVIDER *provider = NULL;
+	//OSSL_PROVIDER *provider = NULL;
 
 	if (vc == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -781,12 +781,12 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 		return 0;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssi");
+	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
-	}
+	}*/
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
@@ -843,14 +843,14 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt){
 		goto err;
 	}
 
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
 	return 1;
 
 err:
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
@@ -951,7 +951,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 
-	OSSL_PROVIDER *provider = NULL;
+	//OSSL_PROVIDER *provider = NULL;
 
 	/* 0-length context for server VC message */
 	if (SSL_IS_TLS13(s) && !WPACKET_put_bytes_u8(pkt, 0)) {
@@ -959,12 +959,12 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 		return 0;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssi");
+	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		printf("SSI provider load failed\n");
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
-	}
+	}*/
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
@@ -1012,14 +1012,14 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt) {
 		goto err;
 	}
 
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
 	return 1;
 
 err:
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
@@ -1244,7 +1244,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 		goto err;
 	}
 
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 
@@ -1254,7 +1254,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	return MSG_PROCESS_CONTINUE_READING;
 
 err:
-	OSSL_PROVIDER_unload(provider);
+	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 

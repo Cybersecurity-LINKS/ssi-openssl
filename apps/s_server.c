@@ -56,6 +56,8 @@ typedef unsigned int u_int;
 #endif
 #include "internal/sockets.h"
 
+#include <openssl/provider.h>
+
 static int not_resumable_sess_cb(SSL *s, int is_forward_secure);
 static int sv_body(int s, int stype, int prot, unsigned char *context);
 static int www_body(int s, int stype, int prot, unsigned char *context);
@@ -1068,6 +1070,8 @@ int s_server_main(int argc, char *argv[])
 
     char *vc_file = NULL;
     char *vc_issuers_file = NULL;
+
+    OSSL_PROVIDER *provider = NULL;
 
     /* Init of few remaining global variables */
     local_argc = argc;
@@ -2120,29 +2124,44 @@ int s_server_main(int argc, char *argv[])
         goto end;
 
     if (did) {
-		if (vc_file == NULL || vc_issuers_file == NULL || !set_did_key_stuff(ctx, did_pkey, did))
+		if (vc_file == NULL || !set_did_key_stuff(ctx, did_pkey, did))
 			goto end;
     }
 
 	if (did_methods) {
-		if (!SSL_CTX_set_did_methods(ctx, did_methods)) {
+		if (vc_issuers_file == NULL || !SSL_CTX_set_did_methods(ctx, did_methods)) {
 			BIO_printf(bio_err, "Error setting did_methods\n");
 			goto end;
 		}
 	}
 
 	if (vc_file) {
-		if (did == NULL || vc_issuers_file == NULL
-				|| !SSL_CTX_set_vc(ctx, vc_file)) {
+		if (did == NULL || !SSL_CTX_set_vc(ctx, vc_file)) {
 			BIO_printf(bio_err, "Error setting VC\n");
+			goto end;
+		}
+
+		provider = OSSL_PROVIDER_load(NULL, "ssi");
+		if (provider == NULL) {
+			printf("SSI provider load failed\n");
+			ERR_print_errors(bio_err);
 			goto end;
 		}
 	}
 
 	if (vc_issuers_file) {
-		if (did == NULL || vc_file == NULL || !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
+		if (did_methods == NULL || !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
 			BIO_printf(bio_err, "Error setting trusted VC issuers\n");
 			goto end;
+		}
+
+		if (provider == NULL) {
+			provider = OSSL_PROVIDER_load(NULL, "ssi");
+			if (provider == NULL) {
+				printf("SSI provider load failed\n");
+				ERR_print_errors(bio_err);
+				goto end;
+			}
 		}
 	}
 
