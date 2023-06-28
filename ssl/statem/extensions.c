@@ -381,13 +381,13 @@ static const EXTENSION_DEFINITION ext_defs[] = {
         NULL, NULL, NULL, tls_construct_ctos_padding, NULL
     },
 	{
-		TLSEXT_TYPE_supported_did_methods,
+		TLSEXT_TYPE_did_methods,
 		SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_3_ONLY
 		| SSL_EXT_TLS1_3_VC_REQUEST,
-		init_did, tls_parse_ctos_supported_did_methods,
-		tls_parse_stoc_supported_did_methods,
-		tls_construct_stoc_supported_did_methods,
-		tls_construct_ctos_supported_did_methods, NULL
+		init_did, tls_parse_ctos_did_methods,
+		tls_parse_stoc_did_methods,
+		tls_construct_stoc_did_methods,
+		tls_construct_ctos_did_methods, NULL
 	},
     {
         /* Required by the TLSv1.3 spec to always be the last extension */

@@ -776,7 +776,7 @@ typedef enum tlsext_index_en {
     TLSEXT_IDX_early_data,
     TLSEXT_IDX_certificate_authorities,
     TLSEXT_IDX_padding,
-	TLSEXT_IDX_supported_did_methods,
+	TLSEXT_IDX_did_methods,
     TLSEXT_IDX_psk,
     /* Dummy index - must always be the last entry */
     TLSEXT_IDX_num_builtins
@@ -1085,9 +1085,9 @@ struct ssl_ctx_st {
         uint16_t *supported_groups_default;
         size_t supported_groups_default_len;
 
-        size_t supporteddidmethods_len;
+        size_t didmethods_len;
         /* our list */
-        uint8_t *supporteddidmethods;
+        uint8_t *didmethods;
 
         /*
          * ALPN information (we are in the process of transitioning from NPN to
@@ -1674,13 +1674,13 @@ struct ssl_st {
          /* peer's list */
         uint16_t *peer_supportedgroups;
 
-		size_t supporteddidmethods_len;
+		size_t didmethods_len;
 		/* our list */
-		uint8_t *supporteddidmethods;
+		uint8_t *didmethods;
 
-		size_t peer_supporteddidmethods_len;
+		size_t peer_didmethods_len;
 		/* peer's list */
-		uint8_t *peer_supporteddidmethods;
+		uint8_t *peer_didmethods;
 
         /* TLS Session Ticket extension override */
         TLS_SESSION_TICKET_EXT *session_ticket;

@@ -12,14 +12,13 @@
 #include <openssl/provider.h>
 #include <openssl/evp_ssi.h>
 #include <openssl/core_names.h>
-//#include "/home/pirug/Desktop/C_CRUD/did_method.h"
 
 int init_did(SSL *s, unsigned int context) {
 
 	/* Clear any supported did method received */
-	OPENSSL_free(s->ext.peer_supporteddidmethods);
-	s->ext.peer_supporteddidmethods = NULL;
-	s->ext.peer_supporteddidmethods_len = 0;
+	OPENSSL_free(s->ext.peer_didmethods);
+	s->ext.peer_didmethods = NULL;
+	s->ext.peer_didmethods_len = 0;
 
 	return 1;
 }
@@ -338,21 +337,21 @@ err:
  ********************************************************
  ********************************************************/
 
-EXT_RETURN tls_construct_ctos_supported_did_methods(SSL *s, WPACKET *pkt,
+EXT_RETURN tls_construct_ctos_did_methods(SSL *s, WPACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 
 #ifndef OPENSSL_NO_TLS1_3
 
 	s->s3.did_methods_sent = 0;
 
-	if (s->ext.supporteddidmethods == NULL || s->ext.supporteddidmethods_len == 0)
+	if (s->ext.didmethods == NULL || s->ext.didmethods_len == 0)
 		return EXT_RETURN_NOT_SENT;
 
-	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_supported_did_methods)
+	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_did_methods)
 	/* Sub-packet for supported_dids extension */
 	|| !WPACKET_start_sub_packet_u16(pkt)
 	/* Sub-packet for the actual list */
-	|| !WPACKET_sub_memcpy_u8(pkt, s->ext.supporteddidmethods, s->ext.supporteddidmethods_len)
+	|| !WPACKET_sub_memcpy_u8(pkt, s->ext.didmethods, s->ext.didmethods_len)
 			|| !WPACKET_close(pkt)) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return EXT_RETURN_FAIL;
@@ -364,22 +363,22 @@ EXT_RETURN tls_construct_ctos_supported_did_methods(SSL *s, WPACKET *pkt,
 #endif
 }
 
-int tls_parse_stoc_supported_did_methods(SSL *s, PACKET *pkt,
+int tls_parse_stoc_did_methods(SSL *s, PACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 
 #ifndef OPENSSL_NO_TLS1_3
-	PACKET supported_did_methods;
+	PACKET did_methods;
 
-	if (!PACKET_as_length_prefixed_1(pkt, &supported_did_methods)
-			|| PACKET_remaining(&supported_did_methods) == 0) {
+	if (!PACKET_as_length_prefixed_1(pkt, &did_methods)
+			|| PACKET_remaining(&did_methods) == 0) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
 	}
 
 	if (!s->hit
-			&& !PACKET_memdup(&supported_did_methods,
-					&s->ext.peer_supporteddidmethods,
-					&s->ext.peer_supporteddidmethods_len)) {
+			&& !PACKET_memdup(&did_methods,
+					&s->ext.peer_didmethods,
+					&s->ext.peer_didmethods_len)) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
 	}
@@ -439,7 +438,7 @@ MSG_PROCESS_RETURN tls_process_vc_request(SSL *s, PACKET *pkt) {
 	}
 
 	/* Check client DID compatibility towards DID methods provided by the server */
-	if (!tls1_process_supported_did_methods(s)){
+	if (!tls1_process_did_methods(s)){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_BAD_LENGTH);
 		return MSG_PROCESS_ERROR;
 	}
@@ -580,7 +579,8 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 	EVP_VC *evp_vc = NULL;
 	OSSL_PARAM params[13];
 	size_t params_n = 0, i;
-	VC_ISSUER *p;
+	/* VC_ISSUER *p;
+	size_t i; */
 	BIO *did_pubkey = NULL;
 	EVP_PKEY *issuer_pubkey;
 	int ret;
@@ -733,137 +733,8 @@ err:
 	return WORK_ERROR;
 }
 
-//MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt) {
-//
-//	/*did_document_ *didDocument = NULL;*/
-//	unsigned int did_len, context, method;
-//	/*unsigned char server_did[100];*/
-//	BIO *pubkey;
-//
-//	DID_DOCUMENT *did_doc = NULL;
-//	DID_CTX *didctx = NULL;
-//	OSSL_PROVIDER *provider = NULL;
-//	int ret;
-//	unsigned char *server_did;
-//
-//	//load the did provider for did operations
-//	provider = OSSL_PROVIDER_load(NULL, "didprovider");
-//	if (provider == NULL) {
-//		printf("DID provider load failed\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	didctx = DID_CTX_new(provider);
-//	if (didctx == NULL) {
-//		printf("DID CTX new failed\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	//Creation of new did document
-//	did_doc = DID_DOCUMENT_new();
-//	if (did_doc == NULL) {
-//		printf("DID document new failed\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	DID_fetch(NULL, didctx, "OTT", "property");
-//
-//	/*didDocument = calloc(1, sizeof(did_document_));
-//	 if (didDocument == NULL) {
-//	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//	 return MSG_PROCESS_ERROR;
-//	 }
-//
-//	 did_document_init(didDocument);*/
-//
-//	if (!PACKET_get_1(pkt, &context) || context != 0) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	if (!PACKET_get_1(pkt, &method)) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	if (!PACKET_get_net_2(pkt, &did_len)) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	server_did = OPENSSL_malloc(sizeof(unsigned char) * did_len);
-//
-//	if (!PACKET_copy_bytes(pkt, server_did, did_len)
-//			|| PACKET_remaining(pkt) != 0) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
-//		return MSG_PROCESS_ERROR;
-//	}
-//	/*if(resolve_(didDocument, (char *)server_did) != DID_RESOLVE_OK){
-//	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
-//	 return MSG_PROCESS_ERROR;
-//	 }*/
-//
-//	ret = DID_resolve(didctx, server_did, did_doc);
-//
-//	switch (ret) {
-//	case DID_INTERNAL_ERROR:
-//		printf("DID method internal error\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return -1;
-//		break;
-//	case DID_NOT_FOUD:
-//		printf("DID document not found\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return 0;
-//		break;
-//	case DID_REVOKED:
-//		printf("DID %s REVOKED\n", server_did);
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return 0;
-//		break;
-//	case DID_OK:
-//		printf("DID %s FOUND\n", server_did);
-//		break;
-//	default:
-//		break;
-//	}
-//
-//	/*if((pubkey = BIO_new_mem_buf(didDocument->authMethod.pk_pem.p, -1)) == NULL){
-//	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//	 return MSG_PROCESS_ERROR;
-//	 }*/
-//
-//	if ((pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1)) == NULL) {
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	if ((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(pubkey, NULL, NULL,
-//			NULL)) == NULL) {
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	/* Save the current hash state for when we receive the DidVerify */
-//	if (!ssl_handshake_hash(s, s->did_verify_hash, sizeof(s->did_verify_hash),
-//			&s->did_verify_hash_len)) {
-//		/* SSLfatal() already called */;
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	DID_DOCUMENT_free(did_doc);
-//	OSSL_PROVIDER_unload(provider);
-//	DID_CTX_free(didctx);
-//
-//	return MSG_PROCESS_CONTINUE_READING;
-//}
-
-
 /*
- * Check a did can be used for client authentication. Currently check
+ * Check a DID can be used for client authentication. Currently check
  * did exists.
  */
 static int tls_check_client_did(SSL *s) {
@@ -992,22 +863,22 @@ err:
  ********************************************************
  ********************************************************/
 
-int tls_parse_ctos_supported_did_methods(SSL *s, PACKET *pkt,
+int tls_parse_ctos_did_methods(SSL *s, PACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 
 #ifndef OPENSSL_NO_TLS1_3
-	PACKET supported_did_methods;
+	PACKET did_methods;
 
-	if (!PACKET_as_length_prefixed_1(pkt, &supported_did_methods)
-			|| PACKET_remaining(&supported_did_methods) == 0) {
+	if (!PACKET_as_length_prefixed_1(pkt, &did_methods)
+			|| PACKET_remaining(&did_methods) == 0) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
 	}
 
 	if (!s->hit
-			&& !PACKET_memdup(&supported_did_methods,
-					&s->ext.peer_supporteddidmethods,
-					&s->ext.peer_supporteddidmethods_len)) {
+			&& !PACKET_memdup(&did_methods,
+					&s->ext.peer_didmethods,
+					&s->ext.peer_didmethods_len)) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 	}
@@ -1017,11 +888,11 @@ int tls_parse_ctos_supported_did_methods(SSL *s, PACKET *pkt,
 	return 1;
 }
 
-EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt,
+EXT_RETURN tls_construct_stoc_did_methods(SSL *s, WPACKET *pkt,
 		unsigned int context, X509 *x, size_t chainidx) {
 #ifndef OPENSSL_NO_TLS1_3
 
-	if (s->ext.supporteddidmethods == NULL || s->ext.supporteddidmethods_len == 0)
+	if (s->ext.didmethods == NULL || s->ext.didmethods_len == 0)
 		return EXT_RETURN_NOT_SENT;
 
 	uint8_t *didmethods;
@@ -1033,11 +904,11 @@ EXT_RETURN tls_construct_stoc_supported_did_methods(SSL *s, WPACKET *pkt,
 		didmethods = s->shared_didmethods;
 		didmethodslen = s->shared_didmethodslen;
 	} else {
-		didmethods = s->ext.supporteddidmethods;
-		didmethodslen = s->ext.supporteddidmethods_len;
+		didmethods = s->ext.didmethods;
+		didmethodslen = s->ext.didmethods_len;
 	}
 
-	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_supported_did_methods)
+	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_did_methods)
 	/* Sub-packet for sig-algs extension */
 	|| !WPACKET_start_sub_packet_u16(pkt)
 	/* Sub-packet for the actual list */
@@ -1162,8 +1033,9 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	EVP_VC_CTX *ctx = NULL;
 	EVP_VC *evp_vc = NULL;
 	OSSL_PARAM params[13];
-	size_t params_n = 0, i;
-	VC_ISSUER *p;
+	size_t params_n = 0;
+	/* VC_ISSUER *p;
+	size_t i; */
 	EVP_PKEY *issuer_pubkey;
 	BIO *did_pubkey = NULL;
 	int ret;
@@ -1391,154 +1263,4 @@ err:
 
 	return MSG_PROCESS_ERROR;
 }
-
-//MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt){
-//
-//	PACKET context;
-//	/*did_document_ *didDocument = NULL;*/
-//	unsigned int did_len, method;
-//	/*unsigned char client_did[100];*/
-//	BIO *pubkey;
-//
-//	/*didDocument = calloc(1, sizeof(did_document_));
-//	 if (didDocument == NULL) {
-//	 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//	 return MSG_PROCESS_ERROR;
-//	 }
-//
-//	 did_document_init(didDocument);*/
-//
-//	DID_DOCUMENT *did_doc = NULL;
-//	DID_CTX *didctx = NULL;
-//	OSSL_PROVIDER *provider = NULL;
-//	unsigned char *client_did;
-//	int ret;
-//
-//	//load the did provider for did operations
-//	provider = OSSL_PROVIDER_load(NULL, "didprovider");
-//	if (provider == NULL) {
-//		printf("DID provider load failed\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	didctx = DID_CTX_new(provider);
-//	if (didctx == NULL) {
-//		printf("DID CTX new failed\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	//Creation of new did document
-//	did_doc = DID_DOCUMENT_new();
-//	if (did_doc == NULL) {
-//		printf("DID document new failed\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	DID_fetch(NULL, didctx, "OTT", "property");
-//
-//	/*
-//	 * To get this far we must have read encrypted data from the client. We no
-//	 * longer tolerate unencrypted alerts. This value is ignored if less than
-//	 * TLSv1.3
-//	 */
-//	s->statem.enc_read_state = ENC_READ_STATE_VALID;
-//
-//	if ((!PACKET_get_length_prefixed_1(pkt, &context)
-//			|| (s->pha_context == NULL && PACKET_remaining(&context) != 0)
-//			|| (s->pha_context != NULL
-//					&& !PACKET_equal(&context, s->pha_context,
-//							s->pha_context_len)))) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_INVALID_CONTEXT);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	if (!PACKET_get_1(pkt, &method)) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_TOO_SHORT);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	if (!PACKET_get_net_2(pkt, &did_len)) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//
-//	client_did = OPENSSL_malloc(sizeof(unsigned char) * did_len);
-//
-//	if (!PACKET_copy_bytes(pkt, client_did, did_len)
-//			|| PACKET_remaining(pkt) != 0) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	/*if (resolve_(didDocument, (char*) client_did) != DID_RESOLVE_OK){
-//	 SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_NO_DID_DOCUMENT_RESOLVED);
-//	 return MSG_PROCESS_ERROR;
-//	 }*/
-//
-//	ret = DID_resolve(didctx, client_did, did_doc);
-//
-//	switch (ret) {
-//	case DID_INTERNAL_ERROR:
-//		printf("DID method internal error\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return -1;
-//		break;
-//	case DID_NOT_FOUD:
-//		printf("DID document not found\n");
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return 0;
-//		break;
-//	case DID_REVOKED:
-//		printf("DID %s REVOKED\n", client_did);
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return 0;
-//		break;
-//	case DID_OK:
-//		printf("DID %s FOUND\n", client_did);
-//		break;
-//	default:
-//		break;
-//	}
-//
-//	/*if ((pubkey = BIO_new_mem_buf(didDocument->authMethod.pk_pem.p, -1)) == NULL) {
-//	 SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
-//	 return MSG_PROCESS_ERROR;
-//	 }*/
-//
-//	if ((pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1)) == NULL) {
-//		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	if ((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(pubkey, NULL, NULL,
-//	NULL)) == NULL) {
-//		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	/*
-//	 * Freeze the handshake buffer
-//	 */
-//	if (!ssl3_digest_cached_records(s, 1)) {
-//		/* SSLfatal() already called */
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	/* Save the current hash state for when we receive the DidVerify */
-//	if (!ssl_handshake_hash(s, s->did_verify_hash, sizeof(s->did_verify_hash),
-//			&s->did_verify_hash_len)) {
-//		/* SSLfatal() already called */;
-//		return MSG_PROCESS_ERROR;
-//	}
-//
-//	DID_DOCUMENT_free(did_doc);
-//	OSSL_PROVIDER_unload(provider);
-//	DID_CTX_free(didctx);
-//
-//	return MSG_PROCESS_CONTINUE_READING;
-//}
 

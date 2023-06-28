@@ -735,7 +735,7 @@ SSL *SSL_new(SSL_CTX *ctx)
 	if(s->vc == NULL)
 		goto err;
 
-	s->trusted_issuers = ssl_vc_issuers_dup(ctx->trusted_issuers, ctx->trusted_issuers_num);
+	s->trusted_issuers	 = ssl_vc_issuers_dup(ctx->trusted_issuers, ctx->trusted_issuers_num);
 	s->trusted_issuers_num = ctx->trusted_issuers_num;
 
     RECORD_LAYER_set_read_ahead(&s->rlayer, ctx->read_ahead);
@@ -803,16 +803,16 @@ SSL *SSL_new(SSL_CTX *ctx)
         }
         s->ext.supportedgroups_len = ctx->ext.supportedgroups_len;
     }
-	if (ctx->ext.supporteddidmethods) {
-		s->ext.supporteddidmethods = OPENSSL_memdup(
-				ctx->ext.supporteddidmethods,
-				ctx->ext.supporteddidmethods_len
-						* sizeof(*ctx->ext.supporteddidmethods));
-		if (!s->ext.supporteddidmethods) {
-			s->ext.supporteddidmethods_len = 0;
+	if (ctx->ext.didmethods) {
+		s->ext.didmethods = OPENSSL_memdup(
+				ctx->ext.didmethods,
+				ctx->ext.didmethods_len
+						* sizeof(*ctx->ext.didmethods));
+		if (!s->ext.didmethods) {
+			s->ext.didmethods_len = 0;
 			goto err;
 		}
-		s->ext.supporteddidmethods_len = ctx->ext.supporteddidmethods_len;
+		s->ext.didmethods_len = ctx->ext.didmethods_len;
 	}
 
 #ifndef OPENSSL_NO_NEXTPROTONEG

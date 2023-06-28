@@ -2119,9 +2119,10 @@ int s_server_main(int argc, char *argv[])
     if (!set_cert_key_stuff(ctx, s_cert, s_key, s_chain, build_chain))
         goto end;
 
-    if (did)
-		if (!set_did_key_stuff(ctx, did_pkey, did))
+    if (did) {
+		if (vc_file == NULL || vc_issuers_file == NULL || !set_did_key_stuff(ctx, did_pkey, did))
 			goto end;
+    }
 
 	if (did_methods) {
 		if (!SSL_CTX_set_did_methods(ctx, did_methods)) {
@@ -2131,16 +2132,19 @@ int s_server_main(int argc, char *argv[])
 	}
 
 	if (vc_file) {
-		if (!SSL_CTX_set_vc(ctx, vc_file)) {
+		if (did == NULL || vc_issuers_file == NULL
+				|| !SSL_CTX_set_vc(ctx, vc_file)) {
 			BIO_printf(bio_err, "Error setting VC\n");
 			goto end;
+		}
 	}
 
-	if (vc_issuers_file != NULL && !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
-		BIO_printf(bio_err, "Error setting trusted VC issuers\n");
-		goto end;
+	if (vc_issuers_file) {
+		if (did == NULL || vc_file == NULL || !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
+			BIO_printf(bio_err, "Error setting trusted VC issuers\n");
+			goto end;
+		}
 	}
-}
 
     if (s_serverinfo_file != NULL
         && !SSL_CTX_use_serverinfo_file(ctx, s_serverinfo_file)) {

@@ -157,9 +157,6 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 		pubkey[n++] = c;
 	}
 
-	/*pubkey[n] = '\0';*/
-	printf("%s\n", pubkey);
-
 	if ((key = BIO_new_mem_buf(pubkey, -1)) == NULL) {
 		return 0;
 	}

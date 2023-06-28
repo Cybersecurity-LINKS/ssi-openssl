@@ -494,9 +494,9 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
     case TLS_ST_SW_ENCRYPTED_EXTENSIONS:
         if (s->hit)
             st->hand_state = TLS_ST_SW_FINISHED;
-		else if (s->ext.supporteddidmethods != NULL && send_vc_request(s))
+		else if (s->ext.didmethods != NULL && send_vc_request(s))
 		 	 st->hand_state = TLS_ST_SW_VC_REQ;
-		else if (s->ext.supporteddidmethods == NULL && send_certificate_request(s))
+		else if (s->ext.didmethods == NULL && send_certificate_request(s))
 		 	 st->hand_state = TLS_ST_SW_CERT_REQ;
 		else if (s->auth_method == CERTIFICATE_AUTHN)
 			st->hand_state = TLS_ST_SW_CERT;
