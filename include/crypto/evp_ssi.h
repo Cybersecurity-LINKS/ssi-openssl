@@ -8,18 +8,7 @@
 
 /* DID */
 
-struct did_ctx_st {
-    OSSL_LIB_CTX *libctx;
-    char *methodtype;
-    /* Method associated with this operation */
-    OSSL_FUNC_did_create_fn *didprovider_create;
-    OSSL_FUNC_did_resolve_fn *didprovider_resolve;
-    OSSL_FUNC_did_update_fn *didprovider_update;
-    OSSL_FUNC_did_revoke_fn *didprovider_revoke;
-    OSSL_PROVIDER *prov;
-};
-
-struct did_document_st {
+/*struct did_document_st {
     //authorization methods
     unsigned char * sig1;
     size_t siglen1;
@@ -28,6 +17,23 @@ struct did_document_st {
     unsigned char * sig2;
     size_t siglen2;
     int type2;
+};*/
+
+struct evp_did_st {
+	OSSL_PROVIDER *prov;
+	int name_id;
+	char *type_name;
+	const char *description;
+	CRYPTO_REF_COUNT refcnt;
+	CRYPTO_RWLOCK *lock;
+
+	static OSSL_FUNC_did_newctx_fn *newctx;
+	static OSSL_FUNC_did_create_fn *create;
+	static OSSL_FUNC_did_resolve_fn *resolve;
+	static OSSL_FUNC_did_update_fn *update;
+	static OSSL_FUNC_did_revoke_fn *revoke;
+	static OSSL_FUNC_did_freectx_fn *freectx;
+	static OSSL_FUNC_did_set_ctx_params_fn *set_ctx_params;
 };
 
 

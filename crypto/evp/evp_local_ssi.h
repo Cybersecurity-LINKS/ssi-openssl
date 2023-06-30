@@ -34,6 +34,32 @@ struct evp_vc_ctx_st {
      * OSSL_FUNC_vc_newctx()
      */
     void *algctx;
-} /* SSI_VC_CTX */;
+} /* EVP_VC_CTX */;
+
+/* DID */
+
+typedef struct method {
+	char *id;
+	char *type;
+	char *controller;
+	char *pkey;
+} method;
+
+typedef struct did {
+	char *atContext;
+	char *id;
+	char *created;
+	method *authentication;
+	method *assertion;
+} did;
+
+struct evp_vc_ctx_st {
+	EVP_DID *meth;               /* Method structure */
+    /*
+     * Opaque ctx returned from a providers DID algorithm implementation
+     * OSSL_FUNC_did_newctx()
+     */
+    void *algctx;
+} /* EVP_DID_CTX */;
 
 #endif /* CRYPTO_EVP_EVP_LOCAL_SSI_H_ */

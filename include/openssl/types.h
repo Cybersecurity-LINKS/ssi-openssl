@@ -229,8 +229,9 @@ typedef struct ossl_decoder_ctx_st OSSL_DECODER_CTX;
 
 typedef struct ossl_self_test_st OSSL_SELF_TEST;
 
-typedef struct did_ctx_st DID_CTX;
-typedef struct did_document_st DID_DOCUMENT;
+typedef struct evp_did_ctx_st EVP_DID_CTX;
+typedef struct evp_did_st EVP_DID;
+typedef struct did_st DID;
 
 typedef struct evp_vc_ctx_st EVP_VC_CTX;
 typedef struct evp_vc_st EVP_VC;

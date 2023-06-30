@@ -948,17 +948,22 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
   *
   */
 
-#define OSSL_FUNC_DID_CREATE                        1
-#define OSSL_FUNC_DID_RESOLVE                       2
-#define OSSL_FUNC_DID_UPDATE                        3
-#define OSSL_FUNC_DID_REVOKE                        4
+#define OSSL_FUNC_DID_NEWCTX						1
+#define OSSL_FUNC_DID_CREATE                        2
+#define OSSL_FUNC_DID_RESOLVE                       3
+#define OSSL_FUNC_DID_UPDATE                        4
+#define OSSL_FUNC_DID_REVOKE                        5
+#define OSSL_FUNC_DID_FREECTX                       6
+#define OSSL_FUNC_DID_SET_PARAMS					7
 
-OSSL_CORE_MAKE_FUNC(void *, did_create, (void *sig1, size_t siglen1,
-						 int type1, void *sig2, size_t siglen2, int type2))
-OSSL_CORE_MAKE_FUNC(int, did_resolve, (char * index, DID_DOCUMENT* did_doc))
-OSSL_CORE_MAKE_FUNC(int, did_update, (char * index, void *sig1, size_t siglen1,
-						 int type1, void *sig2, size_t siglen2, int type2))
-OSSL_CORE_MAKE_FUNC(int, did_revoke, (char * index))
+OSSL_CORE_MAKE_FUNC(void *, did_newctx, (void *provctx))
+OSSL_CORE_MAKE_FUNC(char *, did_create, (void *didctx, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, did_resolve, (void *didctx, char *did, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, did_update, (void *didctx, char *did, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, did_revoke, (void *didctx, char *did))
+OSSL_CORE_MAKE_FUNC(void, did_freectx, (void *vcctx))
+OSSL_CORE_MAKE_FUNC(int, did_set_ctx_params,
+                    (void *didctx, const OSSL_PARAM params[]))
  
 /*
  * VC
