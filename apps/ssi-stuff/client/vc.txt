@@ -3,16 +3,16 @@
 	"id":	"http://example.com/credentials/1",
 	"type":	"VerifiableCredential",
 	"issuer":	"http://example.com/issuer/1",
-	"issuanceDate":	"2023-06-27T10:19:16Z",
+	"issuanceDate":	"2023-06-29T10:16:24Z",
 	"expirationDate":	"2025-01-01T12:00:00Z",
 	"credentialSubject":	{
-		"id":	"did:ott:3E834CAD4EEFABEE2EC870BB5CE34782902F356613D9D9FA55411BB351CBA027"
+		"id":	"did:ott:F0ACE693BCF6B8FC504A93AEC8A1E8F5DB35BF5B493F202806AE0665DEBBDAC3"
 	},
 	"proof":	{
 		"type":	"Ed25519VerificationKey2023",
-		"created":	" 2023-06-27T10:19:16Z",
+		"created":	" 2023-06-29T10:16:24Z",
 		"proofPurpose":	"assertionMethod",
 		"verificationMethod":	"http://example.com/issuer/1#key-2",
-		"proofValue":	"Pn2O1tu3jQTawYzsE8mMTLYBpieMHC/9JVbzVXBhLJnMJV2Is1+3swIvriZTyeLbIF6Vd1wL4trnX7xNMBlbCA=="
+		"proofValue":	"8IcDoWkz4/ky0mwFYkt52MPC0YgsYvZwyCZeb5V06Fv2BFmHSxdnPLo+b39JD3xRR2RmxcH+YEBo5GS+0cReBA=="
 	}
 }
