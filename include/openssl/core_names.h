@@ -563,6 +563,22 @@ extern "C" {
 #define OSSL_VC_PARAM_VERIFICATION_METHOD	"verification-method"
 #define OSSL_VC_PARAM_PROOF_VALUE			"proof-value"
 
+/* DID parameters */
+#define OSSL_DID_PARAM_CONTEXT        				"context"
+#define OSSL_DID_PARAM_ID							"id"
+#define OSSL_DID_PARAM_CREATED 						"created"
+#define OSSL_DID_PARAM_AUTHN_METH_ID				"authn-meth-id"
+#define OSSL_DID_PARAM_AUTHN_METH_TYPE				"authn-meth-type"
+#define OSSL_DID_PARAM_AUTHN_METH_CONTROLLER		"authn-meth-controller"
+#define OSSL_DID_PARAM_AUTHN_METH_PKEY				"authn-meth-pkey"
+#define OSSL_DID_PARAM_ASSRTN_METH_ID				"assrtn-meth-id"
+#define OSSL_DID_PARAM_ASSRTN_METH_TYPE				"assrtn-meth-type"
+#define OSSL_DID_PARAM_ASSRTN_METH_CONTROLLER		"assrtn-meth-controller"
+#define OSSL_DID_PARAM_ASSRTN_METH_PKEY				"assrtn-meth-pkey"
+
+
+#define
+
 # ifdef __cplusplus
 }
 # endif

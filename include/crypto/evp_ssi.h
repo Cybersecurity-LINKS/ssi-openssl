@@ -34,6 +34,7 @@ struct evp_did_st {
 	static OSSL_FUNC_did_revoke_fn *revoke;
 	static OSSL_FUNC_did_freectx_fn *freectx;
 	static OSSL_FUNC_did_set_ctx_params_fn *set_ctx_params;
+	static OSSL_FUNC_did_get_ctx_params_fn *get_ctx_params;
 };
 
 

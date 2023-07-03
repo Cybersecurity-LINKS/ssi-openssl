@@ -12,7 +12,7 @@
 
 /* VC */
 
-typedef struct vc {
+/*typedef struct vc {
 	char *atContext;
 	char *id;
 	char *type;
@@ -25,7 +25,7 @@ typedef struct vc {
 	char *proofPurpose;
 	char *verificationMethod;
 	char *proofValue;
-} vc;
+} vc;*/
 
 struct evp_vc_ctx_st {
 	EVP_VC *meth;               /* Method structure */
@@ -38,7 +38,7 @@ struct evp_vc_ctx_st {
 
 /* DID */
 
-typedef struct method {
+/*typedef struct method {
 	char *id;
 	char *type;
 	char *controller;
@@ -51,7 +51,7 @@ typedef struct did {
 	char *created;
 	method *authentication;
 	method *assertion;
-} did;
+} did;*/
 
 struct evp_vc_ctx_st {
 	EVP_DID *meth;               /* Method structure */

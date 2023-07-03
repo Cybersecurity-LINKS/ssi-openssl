@@ -78,7 +78,7 @@ static void *evp_vc_from_algorithm(int name_id,
         case OSSL_FUNC_VC_FREECTX:
             if (vc->freectx != NULL)
                 break;
-            vc->freectx = OSSL_FUNC_mac_freectx(fns);
+            vc->freectx = OSSL_FUNC_vc_freectx(fns);
             fnctxcnt++;
             break;
         case OSSL_FUNC_VC_CREATE:
