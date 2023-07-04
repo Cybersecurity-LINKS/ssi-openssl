@@ -13,7 +13,7 @@
 # define DID_REVOKED -1
 # define DID_INTERNAL_ERROR -2
 
-/*DID_CTX* DID_CTX_new(OSSL_PROVIDER * provider);
+DID_CTX* DID_CTX_new(OSSL_PROVIDER * provider);
 void DID_CTX_free(DID_CTX *ctx);
 DID_DOCUMENT* DID_DOCUMENT_new(void);
 void DID_DOCUMENT_free(DID_DOCUMENT* did_doc);
@@ -26,7 +26,7 @@ int DID_fetch(OSSL_LIB_CTX *libctx, DID_CTX *ctx, const char *algorithm, const c
 char* DID_create(DID_CTX *ctx, DID_DOCUMENT* did_doc);
 int DID_resolve(DID_CTX *ctx, char * did, DID_DOCUMENT* did_doc);
 int DID_update(DID_CTX *ctx, DID_DOCUMENT* did_doc, char * did);
-int DID_revoke(DID_CTX *ctx, char * did);*/
+int DID_revoke(DID_CTX *ctx, char * did);
 
 EVP_DID_CTX *EVP_DID_CTX_new(EVP_DID *did);
 void EVP_DID_CTX_free(EVP_DID_CTX *ctx);
@@ -35,7 +35,7 @@ int EVP_DID_up_ref(EVP_DID *did);
 void EVP_DID_free(EVP_DID *did);
 char *EVP_DID_create(EVP_DID_CTX *ctx, OSSL_PARAM params[]);
 int EVP_DID_resolve(EVP_DID_CTX *ctx, char *did, char *diddoc, OSSL_PARAM params[]);
-int EVP_DID_update(EVP_DID_CTX *ctx, char *did, OSSL_PARAM params[]);
+char *EVP_DID_update(EVP_DID_CTX *ctx, char *did, OSSL_PARAM params[]);
 int EVP_DID_revoke(EVP_DID_CTX *ctx, char *did);
 int EVP_DID_CTX_get_params(EVP_DID_CTX *ctx, OSSL_PARAM params[]);
 int EVP_DID_CTX_set_params(EVP_DID_CTX *ctx, OSSL_PARAM params[]);

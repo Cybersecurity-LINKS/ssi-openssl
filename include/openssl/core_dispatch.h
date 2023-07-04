@@ -959,9 +959,9 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
 
 OSSL_CORE_MAKE_FUNC(void *, did_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(char *, did_create, (void *didctx, OSSL_PARAM params[]))
-OSSL_CORE_MAKE_FUNC(int, did_resolve, (void *didctx, char *did, char *diddoc, OSSL_PARAM params[]))
-OSSL_CORE_MAKE_FUNC(int, did_update, (void *didctx, char *did, OSSL_PARAM params[]))
-OSSL_CORE_MAKE_FUNC(int, did_revoke, (void *didctx, char *did))
+OSSL_CORE_MAKE_FUNC(int, did_resolve, (void *didctx, char *did, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(char *, did_update, (void *didctx, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, did_revoke, (void *didctx))
 OSSL_CORE_MAKE_FUNC(void, did_freectx, (void *vcctx))
 OSSL_CORE_MAKE_FUNC(int, did_set_ctx_params,
                     (void *didctx, const OSSL_PARAM params[]))

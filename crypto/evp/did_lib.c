@@ -43,9 +43,9 @@ char *EVP_DID_create(EVP_DID_CTX *ctx, OSSL_PARAM params[]) {
 	return ctx->meth->create(ctx->algctx, params);
 }
 
-int EVP_DID_resolve(EVP_DID_CTX *ctx, char *did, char *diddoc, OSSL_PARAM params[]) {
+int EVP_DID_resolve(EVP_DID_CTX *ctx, char *did, OSSL_PARAM params[]) {
 
-	return ctx->meth->resolve(ctx->algctx, did, diddoc, params);
+	return ctx->meth->resolve(ctx->algctx, did, params);
 }
 
 int EVP_DID_update(EVP_DID_CTX *ctx, char *did, OSSL_PARAM params[]) {
