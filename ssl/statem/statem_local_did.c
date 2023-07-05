@@ -198,7 +198,7 @@ MSG_PROCESS_RETURN tls_process_did_verify(SSL *s, PACKET *pkt) {
 		goto err;
 	}
 
-	pkey = s->session->peer_did_pubkey;
+	pkey = s->session->peer_did_doc->authentication->pkey;
 
 	if (pkey == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -474,20 +474,17 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	size_t params_n = 0;
 
 	unsigned char *vc_stream;
+
 	s->session->peer_vc = OPENSSL_zalloc(sizeof(VC));
-	VC *vc = s->session->peer_vc;
-
-	//OSSL_PROVIDER *provider = NULL;
-
-
-	if (vc == NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	if (s->session->peer_vc == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		return MSG_PROCESS_ERROR;
 	}
+	VC *vc = s->session->peer_vc;
 
 	VC *tmp = OPENSSL_zalloc(sizeof(*tmp));
 	if (tmp == NULL) {
-		ERR_raise(ERR_LIB_PROV, ERR_R_MALLOC_FAILURE);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -502,19 +499,16 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	}
 
 	vc_stream = OPENSSL_zalloc(sizeof(unsigned char) * vc_len);
+	if (vc_stream == NULL) {
+			SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+			return MSG_PROCESS_ERROR;
+	}
 
 	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len)
 			|| PACKET_remaining(pkt) != 0) {
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
 		return MSG_PROCESS_ERROR;
 	}
-
-	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
-	if (provider == NULL) {
-		printf("SSI provider load failed\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return MSG_PROCESS_ERROR;
-	}*/
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
@@ -555,7 +549,6 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
 	vc->proofValue = OPENSSL_strdup(tmp->proofValue);
 
-	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 	OPENSSL_free(tmp);
@@ -563,7 +556,6 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt){
 	return MSG_PROCESS_CONTINUE_PROCESSING;
 
 err:
-	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 	OPENSSL_free(tmp);
@@ -574,42 +566,38 @@ err:
 WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 
 	VC *vc = s->session->peer_vc;
-
-	EVP_VC_CTX *ctx = NULL;
+	EVP_VC_CTX *ctx_vc = NULL;
 	EVP_VC *evp_vc = NULL;
+
 	OSSL_PARAM params[13];
 	size_t params_n = 0, i;
 	/* VC_ISSUER *p;
 	size_t i; */
 	BIO *did_pubkey = NULL;
 	EVP_PKEY *issuer_pubkey;
-	int ret;
 
-	OSSL_PROVIDER *provider = NULL;
+	EVP_DID_CTX *ctx_did = NULL;
+	EVP_DID *evp_did = NULL;
 
-	DID_DOCUMENT *did_doc = NULL;
-	DID_CTX *didctx = NULL;
-
-	if (vc == NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return WORK_ERROR;
-	}
-
-	provider = OSSL_PROVIDER_load(NULL, "ssi");
-	if (provider == NULL) {
-		printf("SSI provider load failed\n");
+	s->session->peer_did_doc = OPENSSL_zalloc(sizeof(DID_DOC));
+	DID_DOC *diddoc = s->session->peer_did_doc;
+	if (diddoc == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
-	if (evp_vc == NULL)
+	if (evp_vc == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;
+	}
 
 	/* Create a context for the vc operation */
-	ctx = EVP_VC_CTX_new(evp_vc);
-	if (ctx == NULL)
+	ctx_vc = EVP_VC_CTX_new(evp_vc);
+	if (ctx_vc == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		goto err;
+	}
 
 	if (vc->atContext != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
@@ -649,60 +637,81 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 	if(issuer_pubkey == NULL)
 		goto err;
 
-	if(!EVP_VC_verify(ctx, issuer_pubkey, params))
-		goto err;
-
-	didctx = DID_CTX_new(provider);
-	if (didctx == NULL) {
-		printf("DID CTX new failed\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	if(!EVP_VC_verify(ctx_vc, issuer_pubkey, params)){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;
 	}
 
-	//Creation of new did document
-	did_doc = DID_DOCUMENT_new();
-	if (did_doc == NULL) {
-		printf("DID document new failed\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
+	if (evp_did == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;
 	}
 
-	DID_fetch(NULL, didctx, "OTT", "property");
-
-	ret = DID_resolve(didctx, vc->credentialSubject, did_doc);
-
-	switch (ret) {
-	case DID_INTERNAL_ERROR:
-		printf("DID method internal error\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return -1;
-		break;
-	case DID_NOT_FOUD:
-		printf("DID document not found\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
-		break;
-	case DID_REVOKED:
-		printf("DID %s REVOKED\n", vc->credentialSubject);
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
-		break;
-	case DID_OK:
-		printf("DID %s FOUND\n", vc->credentialSubject);
-		break;
-	default:
-		break;
+	/* Create a context for the vc operation */
+	ctx_did = EVP_DID_CTX_new(evp_did);
+	if (ctx_did == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+		goto err;
 	}
 
-	if ((did_pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1))
+	DID_DOC *tmp = OPENSSL_zalloc(sizeof(*tmp));
+	if (tmp == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+		return MSG_PROCESS_ERROR;
+	}
+
+	params_n = 0;
+
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_CONTEXT, &tmp->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ID, &tmp->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_CREATED, &tmp->created, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_ID, &tmp->authentication->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_TYPE, &tmp->authentication->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_CONTROLLER, &tmp->authentication->controller, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_PKEY, &tmp->authentication->pkey_pem, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_ID, &tmp->assertion->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_TYPE, &tmp->assertion->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_CONTROLLER, &tmp->assertion->controller, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_PKEY, &tmp->assertion->pkey_pem, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	if(!EVP_DID_resolve(ctx_did, vc->credentialSubject, params) || tmp->authentication->pkey_pem == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
+		goto err;
+	}
+
+	diddoc->atContext = OPENSSL_strdup(tmp->atContext);
+	diddoc->id = OPENSSL_strdup(tmp->id);
+	diddoc->created = OPENSSL_strdup(tmp->created);
+	diddoc->authentication->id = OPENSSL_strdup(tmp->authentication->id);
+	diddoc->authentication->type = OPENSSL_strdup(tmp->authentication->type);
+	diddoc->authentication->controller = OPENSSL_strdup(tmp->authentication->controller);
+	diddoc->authentication->pkey_pem = OPENSSL_strdup(tmp->authentication->pkey_pem);
+	diddoc->assertion->id = OPENSSL_strdup(tmp->assertion->id);
+	diddoc->assertion->type = OPENSSL_strdup(tmp->assertion->type);
+	diddoc->assertion->controller = OPENSSL_strdup(tmp->assertion->controller);
+	diddoc->assertion->pkey_pem = OPENSSL_strdup(tmp->assertion->pkey_pem);
+
+	if ((did_pubkey = BIO_new_mem_buf(tmp->authentication->pkey_pem, -1)) == NULL) {
+			SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BIO_LIB);
+			goto err;
+	}
+
+	if((diddoc->authentication->pkey(PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL, NULL))) == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_PEM_LIB);
+		goto err;
+	}
+
+	if ((did_pubkey = BIO_new_mem_buf(tmp->assertion->pkey_pem, -1))
 			== NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BIO_LIB);
 		goto err;
 	}
 
-	if ((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL,
-	NULL)) == NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	if ((diddoc->assertion->pkey(
+			PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL, NULL))) == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_PEM_LIB);
 		goto err;
 	}
 
@@ -713,22 +722,18 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst){
 		goto err;
 	}
 
-	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
-	EVP_VC_CTX_free(ctx);
-
-	DID_DOCUMENT_free(did_doc);
-	DID_CTX_free(didctx);
+	EVP_VC_CTX_free(ctx_vc);
+	EVP_DID_free(evp_did);
+	EVP_DID_CTX_free(ctx_did);
 
 	return WORK_FINISHED_CONTINUE;
 err:
 
-	//OSSL_PROVIDER_unload(provider);
 	EVP_VC_free(evp_vc);
-	EVP_VC_CTX_free(ctx);
-
-	DID_DOCUMENT_free(did_doc);
-	DID_CTX_free(didctx);
+	EVP_VC_CTX_free(ctx_vc);
+	EVP_DID_free(evp_did);
+	EVP_DID_CTX_free(ctx_did);
 
 	return WORK_ERROR;
 }
@@ -1030,7 +1035,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 
 	unsigned int vc_len;
 	PACKET context;
-	EVP_VC_CTX *ctx = NULL;
+	EVP_VC_CTX *ctx_vc = NULL;
 	EVP_VC *evp_vc = NULL;
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
@@ -1038,25 +1043,22 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	size_t i; */
 	EVP_PKEY *issuer_pubkey;
 	BIO *did_pubkey = NULL;
-	int ret;
 
 	unsigned char *vc_stream;
+
+	EVP_DID_CTX *ctx_did = NULL;
+	EVP_DID *evp_did = NULL;
+
 	s->session->peer_vc = OPENSSL_zalloc(sizeof(VC));
+	if (s->session->peer_vc == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+		return MSG_PROCESS_ERROR;
+	}
 	VC *vc = s->session->peer_vc;
 
-	OSSL_PROVIDER *provider = NULL;
-
-	DID_DOCUMENT *did_doc = NULL;
-	DID_CTX *didctx = NULL;
-
-	if (vc == NULL) {
+	VC *tmp_vc = OPENSSL_zalloc(sizeof(*tmp));
+	if (tmp_vc == NULL) {
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		return 0;
-	}
-
-	VC *tmp = OPENSSL_zalloc(sizeof(*tmp));
-	if (tmp == NULL) {
-		ERR_raise(ERR_LIB_PROV, ERR_R_MALLOC_FAILURE);
 		return MSG_PROCESS_ERROR;
 	}
 
@@ -1077,6 +1079,10 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	}
 
 	vc_stream = OPENSSL_malloc(sizeof(unsigned char) * vc_len);
+	if (vc_stream == NULL) {
+			SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+			return MSG_PROCESS_ERROR;
+	}
 
 	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len)
 			|| PACKET_remaining(pkt) != 0) {
@@ -1084,57 +1090,58 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 		return MSG_PROCESS_ERROR;
 	}
 
-	provider = OSSL_PROVIDER_load(NULL, "ssi");
-	if (provider == NULL) {
-		printf("SSI provider load failed\n");
+	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
+	if (evp_vc == NULL){
+		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_EVP_LIB);
+		goto err;
+	}
+
+	/* Create a context for the vc operation */
+	ctx_vc = EVP_VC_CTX_new(evp_vc);
+	if (ctx_vc == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+		goto err;
+	}
+
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_CONTEXT, &tmp_vc->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ID, &tmp_vc->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_TYPE, &tmp_vc->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUER, &tmp_vc->issuer, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUANCE_DATE, &tmp_vc->issuanceDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_EXPIRATION_DATE, &tmp_vc->expirationDate, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_SUBJECT, &tmp_vc->credentialSubject, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_TYPE, &tmp_vc->proofType, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_CREATED, &tmp_vc->proofCreated, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_PURPOSE, &tmp_vc->proofPurpose, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_VERIFICATION_METHOD, &tmp_vc->verificationMethod, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_VALUE, &tmp_vc->proofValue, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	if(!EVP_VC_deserialize(ctx_vc, vc_stream, params)){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
-	if (evp_vc == NULL)
+	vc->atContext = OPENSSL_strdup(tmp_vc->atContext);
+	vc->id = OPENSSL_strdup(tmp_vc->id);
+	vc->type = OPENSSL_strdup(tmp_vc->type);
+	vc->issuer = OPENSSL_strdup(tmp_vc->issuer);
+	vc->issuanceDate = OPENSSL_strdup(tmp_vc->issuanceDate);
+	vc->expirationDate = OPENSSL_strdup(tmp_vc->expirationDate);
+	vc->credentialSubject = OPENSSL_strdup(tmp_vc->credentialSubject);
+	vc->proofType = OPENSSL_strdup(tmp_vc->proofType);
+	vc->proofCreated = OPENSSL_strdup(tmp_vc->proofCreated);
+	vc->proofPurpose = OPENSSL_strdup(tmp_vc->proofPurpose);
+	vc->verificationMethod = OPENSSL_strdup(tmp_vc->verificationMethod);
+	vc->proofValue = OPENSSL_strdup(tmp_vc->proofValue);
+
+	EVP_VC_CTX_free(ctx_vc);
+
+	ctx_vc = EVP_VC_CTX_new(evp_vc);
+	if (ctx_vc == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		goto err;
-
-	/* Create a context for the vc operation */
-	ctx = EVP_VC_CTX_new(evp_vc);
-	if (ctx == NULL)
-		goto err;
-
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_CONTEXT, &tmp->atContext, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ID, &tmp->id, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_TYPE, &tmp->type, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUER, &tmp->issuer, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_ISSUANCE_DATE, &tmp->issuanceDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_EXPIRATION_DATE, &tmp->expirationDate, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_SUBJECT, &tmp->credentialSubject, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_TYPE, &tmp->proofType, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_CREATED, &tmp->proofCreated, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_PURPOSE, &tmp->proofPurpose, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_VERIFICATION_METHOD, &tmp->verificationMethod, 0);
-	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_VC_PARAM_PROOF_VALUE, &tmp->proofValue, 0);
-	params[params_n] = OSSL_PARAM_construct_end();
-
-	if(!EVP_VC_deserialize(ctx, vc_stream, params))
-		goto err;
-
-	vc->atContext = OPENSSL_strdup(tmp->atContext);
-	vc->id = OPENSSL_strdup(tmp->id);
-	vc->type = OPENSSL_strdup(tmp->type);
-	vc->issuer = OPENSSL_strdup(tmp->issuer);
-	vc->issuanceDate = OPENSSL_strdup(tmp->issuanceDate);
-	vc->expirationDate = OPENSSL_strdup(tmp->expirationDate);
-	vc->credentialSubject = OPENSSL_strdup(tmp->credentialSubject);
-	vc->proofType = OPENSSL_strdup(tmp->proofType);
-	vc->proofCreated = OPENSSL_strdup(tmp->proofCreated);
-	vc->proofPurpose = OPENSSL_strdup(tmp->proofPurpose);
-	vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
-	vc->proofValue = OPENSSL_strdup(tmp->proofValue);
-
-	EVP_VC_CTX_free(ctx);
-
-	ctx = EVP_VC_CTX_new(evp_vc);
-	if (ctx == NULL)
-		goto err;
+	}
 
 	params_n = 0;
 
@@ -1176,61 +1183,84 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt){
 	if(issuer_pubkey == NULL)
 		goto err;
 
-	if(!EVP_VC_verify(ctx, issuer_pubkey, params))
-		goto err;
-
-	didctx = DID_CTX_new(provider);
-	if (didctx == NULL) {
-		printf("DID CTX new failed\n");
+	if(!EVP_VC_verify(ctx_vc, issuer_pubkey, params)){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 
-	did_doc = DID_DOCUMENT_new();
-	if (did_doc == NULL) {
-		printf("DID document new failed\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
+		if (evp_did == NULL) {
+			SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
+			goto err;
+	}
+
+	/* Create a context for the vc operation */
+	ctx_did = EVP_DID_CTX_new(evp_did);
+	if (ctx_did == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
-	DID_fetch(NULL, didctx, "OTT", "property");
-
-	ret = DID_resolve(didctx, vc->credentialSubject, did_doc);
-
-	switch (ret) {
-	case DID_INTERNAL_ERROR:
-		printf("DID method internal error\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		goto err;
-		break;
-	case DID_NOT_FOUD:
-		printf("DID document not found\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		goto err;
-		break;
-	case DID_REVOKED:
-		printf("DID %s REVOKED\n", vc->credentialSubject);
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		goto err;
-		break;
-	case DID_OK:
-		printf("DID %s FOUND\n", vc->credentialSubject);
-		break;
-	default:
-		break;
+	DID_DOC *tmp_did = OPENSSL_zalloc(sizeof(*tmp_did));
+	if (tmp_did == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+		return MSG_PROCESS_ERROR;
 	}
 
-	if ((did_pubkey = BIO_new_mem_buf(DID_DOCUMENT_get_auth_key(did_doc), -1))
+	params_n = 0;
+
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_CONTEXT, &tmp_did->atContext, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ID, &tmp_did->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_CREATED, &tmp_did->created, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_ID, &tmp->authentication->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_TYPE, &tmp->authentication->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_CONTROLLER, &tmp->authentication->controller, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_AUTHN_METH_PKEY, &tmp->authentication->pkey_pem, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_ID, &tmp->assertion->id, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_TYPE, &tmp->assertion->type, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_CONTROLLER, &tmp->assertion->controller, 0);
+	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_PKEY, &tmp->assertion->pkey_pem, 0);
+	params[params_n] = OSSL_PARAM_construct_end();
+
+	if(!EVP_DID_resolve(ctx_did, vc->credentialSubject, params) || tmp->authentication->pkey_pem == NULL){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
+		goto err;
+	}
+
+	diddoc->atContext = OPENSSL_strdup(tmp->atContext);
+	diddoc->id = OPENSSL_strdup(tmp->id);
+	diddoc->created = OPENSSL_strdup(tmp->created);
+	diddoc->authentication->id = OPENSSL_strdup(tmp->authentication->id);
+	diddoc->authentication->type = OPENSSL_strdup(tmp->authentication->type);
+	diddoc->authentication->controller = OPENSSL_strdup(tmp->authentication->controller);
+	diddoc->authentication->pkey_pem = OPENSSL_strdup(tmp->authentication->pkey_pem);
+	diddoc->assertion->id = OPENSSL_strdup(tmp->assertion->id);
+	diddoc->assertion->type = OPENSSL_strdup(tmp->assertion->type);
+	diddoc->assertion->controller = OPENSSL_strdup(tmp->assertion->controller);
+	diddoc->assertion->pkey_pem = OPENSSL_strdup(tmp->assertion->pkey_pem);
+
+	if ((did_pubkey = BIO_new_mem_buf(tmp->authentication->pkey_pem, -1)) == NULL) {
+			SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BIO_LIB);
+			goto err;
+	}
+
+	if((diddoc->authentication->pkey(PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL, NULL))) == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_PEM_LIB);
+		goto err;
+	}
+
+	if ((did_pubkey = BIO_new_mem_buf(tmp->assertion->pkey_pem, -1))
 			== NULL) {
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BIO_LIB);
 		goto err;
 	}
 
-	if ((s->session->peer_did_pubkey = PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL,
-	NULL)) == NULL) {
-		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
+	if ((diddoc->assertion->pkey(
+			PEM_read_bio_PUBKEY(did_pubkey, NULL, NULL, NULL))) == NULL) {
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_PEM_LIB);
 		goto err;
 	}
+
 
 	if (!ssl3_digest_cached_records(s, 1)) {
 		/* SSLfatal() already called */

@@ -122,7 +122,7 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
         break;
 
 	case TLS_ST_SR_VC:
-		if (s->session->peer_did_pubkey == NULL) {
+		if (s->session->peer_did_doc == NULL) {
 			if (mt == SSL3_MT_FINISHED) {
 				st->hand_state = TLS_ST_SR_FINISHED;
 				return 1;

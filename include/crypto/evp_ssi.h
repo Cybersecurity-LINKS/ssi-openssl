@@ -27,14 +27,14 @@ struct evp_did_st {
 	CRYPTO_REF_COUNT refcnt;
 	CRYPTO_RWLOCK *lock;
 
-	static OSSL_FUNC_did_newctx_fn *newctx;
-	static OSSL_FUNC_did_create_fn *create;
-	static OSSL_FUNC_did_resolve_fn *resolve;
-	static OSSL_FUNC_did_update_fn *update;
-	static OSSL_FUNC_did_revoke_fn *revoke;
-	static OSSL_FUNC_did_freectx_fn *freectx;
-	static OSSL_FUNC_did_set_ctx_params_fn *set_ctx_params;
-	static OSSL_FUNC_did_get_ctx_params_fn *get_ctx_params;
+	OSSL_FUNC_did_newctx_fn *newctx;
+	OSSL_FUNC_did_create_fn *create;
+	OSSL_FUNC_did_resolve_fn *resolve;
+	OSSL_FUNC_did_update_fn *update;
+	OSSL_FUNC_did_revoke_fn *revoke;
+	OSSL_FUNC_did_freectx_fn *freectx;
+	OSSL_FUNC_did_set_ctx_params_fn *set_ctx_params;
+	OSSL_FUNC_did_get_ctx_params_fn *get_ctx_params;
 };
 
 

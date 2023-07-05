@@ -53,7 +53,7 @@ typedef struct did {
 	method *assertion;
 } did;*/
 
-struct evp_vc_ctx_st {
+struct evp_did_ctx_st {
 	EVP_DID *meth;               /* Method structure */
     /*
      * Opaque ctx returned from a providers DID algorithm implementation

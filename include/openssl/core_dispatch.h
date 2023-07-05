@@ -954,8 +954,8 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
 #define OSSL_FUNC_DID_UPDATE                        4
 #define OSSL_FUNC_DID_REVOKE                        5
 #define OSSL_FUNC_DID_FREECTX                       6
-#define OSSL_FUNC_DID_SET_PARAMS					7
-#define OSSL_FUNC_DID_GET_PARAMS					8
+#define OSSL_FUNC_DID_SET_CTX_PARAMS				7
+#define OSSL_FUNC_DID_GET_CTX_PARAMS				8
 
 OSSL_CORE_MAKE_FUNC(void *, did_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(char *, did_create, (void *didctx, OSSL_PARAM params[]))

@@ -231,7 +231,7 @@ typedef struct ossl_self_test_st OSSL_SELF_TEST;
 
 typedef struct evp_did_ctx_st EVP_DID_CTX;
 typedef struct evp_did_st EVP_DID;
-typedef struct did_st DID;
+typedef struct did_doc_st DID_DOC;
 
 typedef struct evp_vc_ctx_st EVP_VC_CTX;
 typedef struct evp_vc_st EVP_VC;

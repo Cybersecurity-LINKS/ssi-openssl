@@ -592,7 +592,7 @@ struct ssl_session_st {
     /* Certificate chain peer sent. */
     STACK_OF(X509) *peer_chain;
 	/* This is the public key of the DID document of the other end */
-	EVP_PKEY *peer_did_pubkey;
+	DID_DOC *peer_did_doc;
 	/* This the peer's VC */
 	VC *peer_vc;
 	/* peer serialized VC */
@@ -2023,10 +2023,9 @@ struct cert_pkey_st {
 };
 
 struct did_pkey_st {
-	/* ott_buf */ unsigned char *did;
+	unsigned char *did;
 	size_t did_len;
-	/*unsigned char *did_method;
-	size_t did_method_len;*/
+
 	uint8_t did_method;
 	EVP_PKEY *privatekey;
 };

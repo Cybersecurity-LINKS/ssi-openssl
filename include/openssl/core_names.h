@@ -577,8 +577,6 @@ extern "C" {
 #define OSSL_DID_PARAM_ASSRTN_METH_PKEY				"assrtn-meth-pkey"
 
 
-#define
-
 # ifdef __cplusplus
 }
 # endif

@@ -40,7 +40,7 @@ static void *evp_did_new(void)
 
     if ((did = OPENSSL_zalloc(sizeof(*did))) == NULL
         || (did->lock = CRYPTO_THREAD_lock_new()) == NULL) {
-        evp_vc_free(did);
+        evp_did_free(did);
         return NULL;
     }
     did->refcnt = 1;
@@ -52,7 +52,7 @@ static void *evp_did_from_algorithm(int name_id,
                                     OSSL_PROVIDER *prov)
 {
 	const OSSL_DISPATCH *fns = algodef->implementation;
-    EVP_VC *did = NULL;
+    EVP_DID *did = NULL;
     int fndidcnt = 0, fnctxcnt = 0;
 
     if ((did = evp_did_new()) == NULL) {
@@ -61,7 +61,7 @@ static void *evp_did_from_algorithm(int name_id,
     }
     did->name_id = name_id;
     if ((did->type_name = ossl_algorithm_get1_first_name(algodef)) == NULL) {
-        evp_vc_free(did);
+        evp_did_free(did);
         return NULL;
     }
     did->description = algodef->algorithm_description;
@@ -77,7 +77,7 @@ static void *evp_did_from_algorithm(int name_id,
         case OSSL_FUNC_DID_FREECTX:
             if (did->freectx != NULL)
                 break;
-            vc->freectx = OSSL_FUNC_did_freectx(fns);
+            did->freectx = OSSL_FUNC_did_freectx(fns);
             fnctxcnt++;
             break;
         case OSSL_FUNC_DID_CREATE:
@@ -87,9 +87,9 @@ static void *evp_did_from_algorithm(int name_id,
             fndidcnt++;
             break;
         case OSSL_FUNC_DID_RESOLVE:
-            if (did->verify != NULL)
+            if (did->resolve != NULL)
                 break;
-            did->verify = OSSL_FUNC_did_verify(fns);
+            did->resolve = OSSL_FUNC_did_resolve(fns);
             fndidcnt++;
             break;
         case OSSL_FUNC_DID_UPDATE:
@@ -121,7 +121,7 @@ static void *evp_did_from_algorithm(int name_id,
         || fnctxcnt != 2) {
         /*
          * In order to be a consistent set of functions we must have at least
-         * a complete set of "vc" functions, and a complete set of context
+         * a complete set of "did" functions, and a complete set of context
          * management functions, as well as the size function.
          */
         evp_did_free(did);
@@ -139,7 +139,7 @@ EVP_DID *EVP_DID_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *
 {
 	EVP_DID *did =
 	        evp_generic_fetch(libctx, OSSL_OP_DID, algorithm, properties,
-	                          evp_did_from_algorithm, evp_did_up_ref, evp_vc_free);
+	                          evp_did_from_algorithm, evp_did_up_ref, evp_did_free);
 
 	    return did;
 }

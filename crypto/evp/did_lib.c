@@ -48,14 +48,14 @@ int EVP_DID_resolve(EVP_DID_CTX *ctx, char *did, OSSL_PARAM params[]) {
 	return ctx->meth->resolve(ctx->algctx, did, params);
 }
 
-int EVP_DID_update(EVP_DID_CTX *ctx, char *did, OSSL_PARAM params[]) {
+char *EVP_DID_update(EVP_DID_CTX *ctx, OSSL_PARAM params[]) {
 
-	return ctx->meth->update(ctx->algctx, did, params);
+	return ctx->meth->update(ctx->algctx, params);
 }
 
-int EVP_DID_revoke(EVP_DID_CTX *ctx, char *did) {
+int EVP_DID_revoke(EVP_DID_CTX *ctx) {
 
-	return ctx->meth->revoke(ctx->algctx, did);
+	return ctx->meth->revoke(ctx->algctx);
 }
 
 int EVP_DID_CTX_get_params(EVP_DID_CTX *ctx, OSSL_PARAM params[]){
