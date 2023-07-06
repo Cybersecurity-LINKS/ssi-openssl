@@ -223,7 +223,7 @@ VC* ssl_vc_dup(VC *vc) {
 
 VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 
-	int i;
+	//int i;
 	VC_ISSUER *ret = OPENSSL_zalloc(issuers_num * sizeof(VC_ISSUER));
 
 	if (ret == NULL) {

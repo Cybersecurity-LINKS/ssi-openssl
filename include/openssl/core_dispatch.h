@@ -966,7 +966,7 @@ OSSL_CORE_MAKE_FUNC(void, did_freectx, (void *vcctx))
 OSSL_CORE_MAKE_FUNC(int, did_set_ctx_params,
                     (void *didctx, const OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(int, did_get_ctx_params,
-					(void *didctx, const OSSL_PARAM params[]))
+					(void *didctx, OSSL_PARAM params[]))
 
 /*
  * VC

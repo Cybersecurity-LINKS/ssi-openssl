@@ -15,7 +15,7 @@
 
 EVP_DID_CTX *EVP_DID_CTX_new(EVP_DID *did);
 void EVP_DID_CTX_free(EVP_DID_CTX *ctx);
-EVP_VC *EVP_DID_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *properties);
+EVP_DID *EVP_DID_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *properties);
 int EVP_DID_up_ref(EVP_DID *did);
 void EVP_DID_free(EVP_DID *did);
 char *EVP_DID_create(EVP_DID_CTX *ctx, OSSL_PARAM params[]);
