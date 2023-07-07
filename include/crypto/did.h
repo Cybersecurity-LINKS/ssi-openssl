@@ -1,10 +1,3 @@
-/*
- * did.h
- *
- *  Created on: Jul 3, 2023
- *      Author: pirug
- */
-
 #ifndef INCLUDE_CRYPTO_DID_H_
 #define INCLUDE_CRYPTO_DID_H_
 
@@ -22,8 +15,8 @@ struct did_doc_st {
 	char *atContext;
 	char *id;
 	char *created;
-	method *authentication;
-	method *assertion;
+	method authentication;
+	method assertion;
 } ;
 
 #endif /* INCLUDE_CRYPTO_DID_H_ */

@@ -473,7 +473,7 @@ EVP_PKEY *SSL_get0_peer_did(const SSL *s){
 	if ((s == NULL) || (s->session == NULL))
 	        return NULL;
 	    else
-	        return s->session->peer_did_doc->authentication->pkey;
+	        return s->session->peer_did_doc->authentication.pkey;
 }
 
 /* Declared in openssl/include/openssl/ssl.h */

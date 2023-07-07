@@ -7,12 +7,6 @@
 # include "evp_ssi.h"
 # include <openssl/types.h>
 
-/*# define DID_OTT "OTT"
-# define DID_OK 1
-# define DID_NOT_FOUD 0
-# define DID_REVOKED -1
-# define DID_INTERNAL_ERROR -2*/
-
 EVP_DID_CTX *EVP_DID_CTX_new(EVP_DID *did);
 void EVP_DID_CTX_free(EVP_DID_CTX *ctx);
 EVP_DID *EVP_DID_fetch(OSSL_LIB_CTX *libctx, const char *algorithm, const char *properties);
