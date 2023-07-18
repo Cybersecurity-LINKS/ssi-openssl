@@ -3,16 +3,16 @@
 	"id":	"http://example.com/credentials/1",
 	"type":	"VerifiableCredential",
 	"issuer":	"http://example.com/issuer/1",
-	"issuanceDate":	"2023-07-07T10:48:15Z",
+	"issuanceDate":	"2023-07-17T13:07:03Z",
 	"expirationDate":	"2025-01-01T12:00:00Z",
 	"credentialSubject":	{
-		"id":	"did:ott:7E70CADF4D4E4F2958C125B48D49BB977CC7E34F8947908AEA196260283A2862"
+		"id":	"did:ott:93D792945F8139703BE165F7C67EB412E1C5EEFA7F7CB7A35640EB7F1B2EFA10"
 	},
 	"proof":	{
-		"type":	"RsaVerificationKey2023",
-		"created":	" 2023-07-07T10:48:15Z",
+		"type":	"EcdsaSecp256r1VerificationKey2023",
+		"created":	" 2023-07-17T13:07:03Z",
 		"proofPurpose":	"assertionMethod",
 		"verificationMethod":	"http://example.com/issuer/1#key-2",
-		"proofValue":	"l/cSZxsgKyCXuTn6vpX09TNwHhMdrlVfrebQWToN7cqH3m6mkeR49b+3xwRn0lprEpwJmzN0xfTnE3d+1LCXlx8kOMi/V1qBQQKAaskbRt9hsmtNm0fQckDLgRQsCdKhLPS49eTmWRW8+v4l+4WZgo/wMAh2T3QUzXMh7HNKm9dnvHqLxWTwrIz6UIcLJ5PfmQvl94EEOtgMKgVnXZVj56TTTxJBAmOLhgBYui7RryUQrQnFdppv+rZR7oNFIoRIORUqIH5Zm+xLjly+TWVaD8rZYVrHUG+EYpDZ+GD10MWR60edJ4VG8pxOKugBwbPmq60AUrfDAqIshNv7COZlww=="
+		"proofValue":	"MEQCIGffevytqZ0cKHHeD0eaqfA/WoZT6qHNI6rRmnd59W5/AiAIjR35zqnF+Pkq0d1GnfRuj2b/YxzK+mrYl7pKqhWvxg=="
 	}
 }
