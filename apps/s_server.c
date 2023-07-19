@@ -2136,15 +2136,15 @@ int s_server_main(int argc, char *argv[])
 	}
 
 	if (vc_file) {
-		if (did == NULL || !SSL_CTX_set_vc(ctx, vc_file)) {
-			BIO_printf(bio_err, "Error setting VC\n");
-			goto end;
-		}
-
 		provider = OSSL_PROVIDER_load(NULL, "ssi");
 		if (provider == NULL) {
 			printf("SSI provider load failed\n");
 			ERR_print_errors(bio_err);
+			goto end;
+		}
+
+		if (did == NULL || !SSL_CTX_set_vc(ctx, vc_file)) {
+			BIO_printf(bio_err, "Error setting VC\n");
 			goto end;
 		}
 	}

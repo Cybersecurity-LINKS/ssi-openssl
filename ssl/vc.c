@@ -24,7 +24,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 	size_t params_n = 0;
 
 	FILE *vc_fp = NULL;
-	OSSL_PROVIDER *provider = NULL;
+	/*OSSL_PROVIDER *provider = NULL;*/
 
 	size_t n = 0;
 	int c;
@@ -51,11 +51,11 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 
 	printf("%s\n", vc_stream);
 
-	provider = OSSL_PROVIDER_load(NULL, "ssi");
+	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
 	if (provider == NULL) {
 		ERR_raise(ERR_LIB_PROV, ERR_R_INIT_FAIL);
 		return 0;
-	}
+	}*/
 
 	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
 	if (evp_vc == NULL)
@@ -96,7 +96,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 	ctx->vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
 	ctx->vc->proofValue = OPENSSL_strdup(tmp->proofValue);
 
-	OSSL_PROVIDER_unload(provider);
+	/*OSSL_PROVIDER_unload(provider);*/
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(evp_ctx);
 	OPENSSL_free(tmp);
@@ -104,7 +104,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 	return 1;
 
 err:
-	OSSL_PROVIDER_unload(provider);
+	/*OSSL_PROVIDER_unload(provider);*/
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(evp_ctx);
 	OPENSSL_free(tmp);
@@ -114,8 +114,7 @@ err:
 
 int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 
-	size_t n = 0;
-	char c;
+	size_t n;
 	unsigned char *pubkey;
 	BIO *key;
 
@@ -151,11 +150,16 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 	fseek(vc_issuers_fp, 0, SEEK_END);
 	long f_size = ftell(vc_issuers_fp);
 	fseek(vc_issuers_fp, 0, SEEK_SET);
-	pubkey = malloc(f_size);
+	pubkey = malloc(f_size + 1);
 
-	while ((c = fgetc(vc_issuers_fp)) != EOF) {
+	/* while ((c = fgetc(vc_issuers_fp)) != EOF) {
 		pubkey[n++] = c;
+	} */
+
+	for (n = 0; n < f_size; n++) {
+		pubkey[n] = fgetc(vc_issuers_fp);
 	}
+	pubkey[f_size] = '\0';
 
 	if ((key = BIO_new_mem_buf(pubkey, -1)) == NULL) {
 		return 0;
