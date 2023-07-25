@@ -35,7 +35,7 @@ void EVP_VC_CTX_free(EVP_VC_CTX *ctx) {
         return;
 	ctx->meth->freectx(ctx->algctx);
 	ctx->algctx = NULL;
-	/* EVP_VC_free(ctx->meth) */
+	EVP_VC_free(ctx->meth);
     OPENSSL_free(ctx);
 }
 
