@@ -17,6 +17,6 @@ VC* ssl_vc_dup(VC *vc);
 
 VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num);
 
-__owur int send_vc_request(SSL *s);
+__owur int send_ssi_request(SSL *s);
 
 #endif /* SSL_SSL_LOCAL_VC_H_ */

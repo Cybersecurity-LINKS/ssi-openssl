@@ -182,7 +182,7 @@ int tls_setup_handshake(SSL *s)
             ssl_tsan_counter(s->ctx, &s->ctx->stats.sess_accept_renegotiate);
 
             s->s3.tmp.cert_request = 0;
-            s->s3.tmp.vc_request = 0;
+            s->s3.tmp.ssi_request = 0;
         }
     } else {
         if (SSL_IS_FIRST_HANDSHAKE(s))
@@ -199,7 +199,7 @@ int tls_setup_handshake(SSL *s)
 
         if (SSL_IS_DTLS(s))
             s->statem.use_timer = 1;
-        	s->s3.tmp.vc_request = 0;
+        	s->s3.tmp.ssi_request = 0;
     }
 
     return 1;
@@ -550,7 +550,7 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
      * want to make sure that SSL_get1_peer_certificate() will return the actual
      * server certificate from the client_cert_cb callback.
      */
-    if (!s->server && SSL_IS_TLS13(s) && (s->s3.tmp.cert_req == 1 || s->s3.tmp.vc_req == 1))
+    if (!s->server && SSL_IS_TLS13(s) && (s->s3.tmp.cert_req == 1 || s->s3.tmp.ssi_req == 1))
         ret = MSG_PROCESS_CONTINUE_PROCESSING;
     else
         ret = MSG_PROCESS_CONTINUE_READING;
@@ -581,7 +581,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
     if (SSL_IS_TLS13(s)
             && !s->server
             && s->s3.tmp.cert_req == 0
-			&& s->s3.tmp.vc_req == 0
+			&& s->s3.tmp.ssi_req == 0
             && (!s->method->ssl3_enc->change_cipher_state(s,
                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE))) {;
         /* SSLfatal() already called */

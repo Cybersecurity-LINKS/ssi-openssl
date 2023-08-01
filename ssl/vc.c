@@ -49,13 +49,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 		vc_stream[n++] = (unsigned char)c;
 	}
 
-	printf("%s\n", vc_stream);
-
-	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
-	if (provider == NULL) {
-		ERR_raise(ERR_LIB_PROV, ERR_R_INIT_FAIL);
-		return 0;
-	}*/
+	/* printf("%s\n", vc_stream); */
 
 	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
 	if (evp_vc == NULL)
@@ -171,6 +165,8 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 	}
 
 	ctx->trusted_issuers_num = 1;
+	
+	ctx->ext.peer_ssiauth = VC_AUTHN;
 
 	return 1;
 }
@@ -254,7 +250,7 @@ VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
  *   0: No
  */
 
-int send_vc_request(SSL *s) {
+int send_ssi_request(SSL *s) {
 	if (
 	/* don't request did unless asked for it: */
 	s->verify_mode & SSL_VERIFY_PEER

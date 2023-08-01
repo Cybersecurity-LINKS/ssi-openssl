@@ -1090,6 +1090,7 @@ struct ssl_ctx_st {
         /* our list */
         uint8_t *didmethods;
 
+        uint8_t peer_ssiauth;
         /*
          * ALPN information (we are in the process of transitioning from NPN to
          * ALPN.)
@@ -1232,8 +1233,8 @@ typedef struct cert_pkey_st CERT_PKEY;
 typedef struct did_pkey_st DID_PKEY;
 
 #define CERTIFICATE_AUTHN 0
-/* #define DID_AUTHN 1 */
-#define VC_AUTHN 1
+#define DID_AUTHN 1
+#define VC_AUTHN 2
 
 struct ssl_st {
     /*
@@ -1347,7 +1348,7 @@ struct ssl_st {
             /* used for certificate requests */
             int cert_req;
             /* used for vc_requests */
-            int vc_req;
+            int ssi_req;
             /* Certificate types in certificate request message. */
             uint8_t *ctype;
             size_t ctype_len;
@@ -1364,7 +1365,7 @@ struct ssl_st {
 # else
             char *new_compression;
 # endif
-            int vc_request;
+            int ssi_request;
             int cert_request;
             /* Raw values of the cipher list from a client */
             unsigned char *ciphers_raw;
@@ -1454,7 +1455,7 @@ struct ssl_st {
         /* used by the client to know if it actually sent alpn */
         int alpn_sent;
         /* used by client to know if it actually sent DID methods*/
-        int did_methods_sent;
+        int ssi_params_sent;
 
         /*
          * This is set to true if we believe that this is a version of Safari
@@ -1678,6 +1679,8 @@ struct ssl_st {
 		size_t didmethods_len;
 		/* our list */
 		uint8_t *didmethods;
+
+        uint8_t peer_ssiauth;
 
 		size_t peer_didmethods_len;
 		/* peer's list */

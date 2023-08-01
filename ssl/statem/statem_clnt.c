@@ -130,16 +130,21 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
                 st->hand_state = TLS_ST_CR_CERT_REQ;
                 return 1;
             }
-            if (!s->s3.did_methods_sent && mt == SSL3_MT_CERTIFICATE) {
+            if (!s->s3.ssi_params_sent && mt == SSL3_MT_CERTIFICATE) {
                 st->hand_state = TLS_ST_CR_CERT;
                 return 1;
             }
-			if (mt == SSL3_MT_VC_REQUEST) {
-				st->hand_state = TLS_ST_CR_VC_REQ;
+			if (mt == SSL3_MT_SSI_REQUEST) {
+				st->hand_state = TLS_ST_CR_SSI_REQ;
 				return 1;
 			}
 
-			if (s->s3.did_methods_sent && mt == SSL3_MT_VC) {
+            if (s->s3.ssi_params_sent && mt == SSL3_MT_DID) {
+				st->hand_state = TLS_ST_CR_DID;
+				return 1;
+			}
+
+			if (s->s3.ssi_params_sent && mt == SSL3_MT_VC) {
 				st->hand_state = TLS_ST_CR_VC;
 				return 1;
 			}
@@ -147,25 +152,35 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         break;
 
     case TLS_ST_CR_CERT_REQ:
-        if (!s->s3.did_methods_sent && mt == SSL3_MT_CERTIFICATE) {
+        if (!s->s3.ssi_params_sent && mt == SSL3_MT_CERTIFICATE) {
             st->hand_state = TLS_ST_CR_CERT;
             return 1;
         }
-		if (s->s3.did_methods_sent && mt == SSL3_MT_VC) {
+		if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
 			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
+
+        if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
+            st->hand_state = TLS_ST_CR_DID;
+            return 1;
+        }
         break;
 
-    case TLS_ST_CR_VC_REQ:
-    	if (!s->s3.did_methods_sent && mt == SSL3_MT_CERTIFICATE){
+    case TLS_ST_CR_SSI_REQ:
+    	if (!s->s3.ssi_params_sent && mt == SSL3_MT_CERTIFICATE){
     		st->hand_state = TLS_ST_CR_CERT;
     		return 1;
     	}
-		if (s->s3.did_methods_sent && mt == SSL3_MT_VC) {
+		if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
 			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
+
+        if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
+            st->hand_state = TLS_ST_CR_DID;
+            return 1;
+        }
 		break;
 
     case TLS_ST_CR_CERT:
@@ -176,6 +191,13 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         break;
 
     case TLS_ST_CR_VC:
+		if (mt == SSL3_MT_DID_VERIFY) {
+			st->hand_state = TLS_ST_CR_DID_VRFY;
+			return 1;
+		}
+		break;
+
+    case TLS_ST_CR_DID:
 		if (mt == SSL3_MT_DID_VERIFY) {
 			st->hand_state = TLS_ST_CR_DID_VRFY;
 			return 1;
@@ -485,9 +507,12 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
         else if (s->auth_method == CERTIFICATE_AUTHN)
             st->hand_state = (s->s3.tmp.cert_req != 0) ? TLS_ST_CW_CERT
                                                         : TLS_ST_CW_FINISHED;
-        else
-			st->hand_state =
-					(s->s3.tmp.vc_req != 0) ?
+        else if (s->auth_method == DID_AUTHN)
+            st->hand_state =
+					(s->s3.tmp.ssi_req != 0) ?
+							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
+        else st->hand_state =
+					(s->s3.tmp.ssi_req != 0) ?
 							TLS_ST_CW_VC : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
@@ -504,9 +529,13 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
     				st->hand_state =
     						(s->s3.tmp.cert_req != 0) ?
     								TLS_ST_CW_CERT : TLS_ST_CW_FINISHED;
+        else if (s->auth_method == DID_AUTHN)
+            st->hand_state =
+					(s->s3.tmp.ssi_req != 0) ?
+							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
 		else
 			st->hand_state =
-					(s->s3.tmp.vc_req != 0) ?
+					(s->s3.tmp.ssi_req != 0) ?
 							TLS_ST_CW_VC : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
@@ -516,10 +545,14 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
                                                     : TLS_ST_CW_FINISHED;
         return WRITE_TRAN_CONTINUE;
 
+    case TLS_ST_CW_DID:
+        st->hand_state = TLS_ST_CW_DID_VRFY;
+    	return WRITE_TRAN_CONTINUE;
+
     case TLS_ST_CW_VC:
-    		/* Did can't be empty */
-    		st->hand_state = TLS_ST_CW_DID_VRFY;
-    		return WRITE_TRAN_CONTINUE;
+    	/* VC can't be empty */
+        st->hand_state = TLS_ST_CW_DID_VRFY;
+        return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_CW_CERT_VRFY:
         st->hand_state = TLS_ST_CW_FINISHED;
@@ -975,6 +1008,11 @@ int ossl_statem_client_construct_message(SSL *s, WPACKET *pkt,
         *confunc = tls_construct_client_certificate;
         *mt = SSL3_MT_CERTIFICATE;
         break;
+        
+    case TLS_ST_CW_DID:
+		*confunc = tls_construct_client_did;
+		*mt = SSL3_MT_DID;
+		break;
 
     case TLS_ST_CW_VC:
 		*confunc = tls_construct_client_vc;
@@ -1038,6 +1076,9 @@ size_t ossl_statem_client_max_message_size(SSL *s)
     case TLS_ST_CR_CERT:
         return s->max_cert_list;
 
+    case TLS_ST_CR_DID:
+        return SSL3_RT_MAX_PLAIN_LENGTH;
+
     case TLS_ST_CR_VC:
         return SSL3_RT_MAX_PLAIN_LENGTH;
 
@@ -1061,7 +1102,7 @@ size_t ossl_statem_client_max_message_size(SSL *s)
          */
         return s->max_cert_list;
 
-	case TLS_ST_CR_VC_REQ:
+	case TLS_ST_CR_SSI_REQ:
 		return SSL3_RT_MAX_PLAIN_LENGTH;
 
     case TLS_ST_CR_SRVR_DONE:
@@ -1109,6 +1150,9 @@ MSG_PROCESS_RETURN ossl_statem_client_process_message(SSL *s, PACKET *pkt)
     case TLS_ST_CR_CERT:
         return tls_process_server_certificate(s, pkt);
 
+    case TLS_ST_CR_DID:
+    	return tls_process_server_did(s, pkt);
+
     case TLS_ST_CR_VC:
     	return tls_process_server_vc(s, pkt);
 
@@ -1127,8 +1171,8 @@ MSG_PROCESS_RETURN ossl_statem_client_process_message(SSL *s, PACKET *pkt)
     case TLS_ST_CR_CERT_REQ:
         return tls_process_certificate_request(s, pkt);
 
-    case TLS_ST_CR_VC_REQ:
-    	return tls_process_vc_request(s, pkt);
+    case TLS_ST_CR_SSI_REQ:
+    	return tls_process_ssi_request(s, pkt);
 
     case TLS_ST_CR_SRVR_DONE:
         return tls_process_server_done(s, pkt);
@@ -1173,8 +1217,8 @@ WORK_STATE ossl_statem_client_post_process_message(SSL *s, WORK_STATE wst)
     	return tls_post_process_server_vc(s, wst);
     case TLS_ST_CR_CERT_VRFY:
     case TLS_ST_CR_DID_VRFY:
-    	if(SSL_IS_TLS13(s) && s->auth_method == VC_AUTHN)
-    		return tls_prepare_client_vc(s, wst);
+    	if(SSL_IS_TLS13(s) && (s->auth_method == VC_AUTHN || s->auth_method == DID_AUTHN))
+    		return tls_prepare_client_ssi(s, wst);
     	else
     		return tls_prepare_client_certificate(s, wst);
     case TLS_ST_CR_CERT_REQ:

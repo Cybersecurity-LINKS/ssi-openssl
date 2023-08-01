@@ -815,6 +815,8 @@ SSL *SSL_new(SSL_CTX *ctx)
 		s->ext.didmethods_len = ctx->ext.didmethods_len;
 	}
 
+    s->ext.peer_ssiauth = ctx->ext.peer_ssiauth;
+
 #ifndef OPENSSL_NO_NEXTPROTONEG
     s->ext.npn = NULL;
 #endif

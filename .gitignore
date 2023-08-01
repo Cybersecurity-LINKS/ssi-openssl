@@ -244,3 +244,6 @@ doc-nits
 .metadata/
 .project
 .cproject
+
+apps/my-cert/
+apps/my-ssi/

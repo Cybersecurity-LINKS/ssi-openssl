@@ -301,7 +301,7 @@ static const EXTENSION_DEFINITION ext_defs[] = {
     {
         TLSEXT_TYPE_signature_algorithms,
         SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_3_CERTIFICATE_REQUEST |
-		SSL_EXT_TLS1_3_VC_REQUEST,
+		SSL_EXT_TLS1_3_SSI_REQUEST,
         init_sig_algs, tls_parse_ctos_sig_algs,
         tls_parse_ctos_sig_algs, tls_construct_ctos_sig_algs,
         tls_construct_ctos_sig_algs, final_sig_algs
@@ -383,7 +383,7 @@ static const EXTENSION_DEFINITION ext_defs[] = {
 	{
 		TLSEXT_TYPE_did_methods,
 		SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_3_ONLY
-		| SSL_EXT_TLS1_3_VC_REQUEST,
+		| SSL_EXT_TLS1_3_SSI_REQUEST,
 		init_did, tls_parse_ctos_did_methods,
 		tls_parse_stoc_did_methods,
 		tls_construct_stoc_did_methods,
@@ -638,7 +638,7 @@ int tls_collect_extensions(SSL *s, PACKET *packet, unsigned int context,
                 && (context & (SSL_EXT_CLIENT_HELLO
                                | SSL_EXT_TLS1_3_CERTIFICATE_REQUEST
                                | SSL_EXT_TLS1_3_NEW_SESSION_TICKET
-							   | SSL_EXT_TLS1_3_VC_REQUEST)) == 0
+							   | SSL_EXT_TLS1_3_SSI_REQUEST)) == 0
                 && type != TLSEXT_TYPE_cookie
                 && type != TLSEXT_TYPE_renegotiate
                 && type != TLSEXT_TYPE_signed_certificate_timestamp
@@ -874,7 +874,7 @@ int tls_construct_extensions(SSL *s, WPACKET *pkt, unsigned int context,
                 && (context & (SSL_EXT_CLIENT_HELLO
                                | SSL_EXT_TLS1_3_CERTIFICATE_REQUEST
                                | SSL_EXT_TLS1_3_NEW_SESSION_TICKET
-							   | SSL_EXT_TLS1_3_VC_REQUEST)) != 0)
+							   | SSL_EXT_TLS1_3_SSI_REQUEST)) != 0)
             s->ext.extflags[i] |= SSL_EXT_FLAG_SENT;
     }
 

@@ -64,6 +64,8 @@ int SSL_CTX_set_did_methods(SSL_CTX *ctx, const char *did_methods){
 				size * sizeof(uint8_t));
 	ctx->ext.didmethods_len = size;
 
+	ctx->ext.peer_ssiauth = DID_AUTHN;
+
 	return 1;
 }
 
@@ -145,7 +147,7 @@ int tls13_set_server_did_methods(SSL *s) {
 		return 1;
 	} else if (is_did_method_supported(s)){
 		/* The server has a DID compatible with the client's DID methods */
-		s->auth_method = VC_AUTHN;
+		/* s->auth_method = s->ext.ssi_authn; */ 
 		if(s->ext.didmethods != NULL)
 			/* if the server has supported did methods to send set the ones in common with the client */
 			if(!tls13_set_shared_didmethods(s))
@@ -269,6 +271,7 @@ int tls_choose_did_sigalg(SSL *s, int fatalerrs) {
 
 	s->s3.tmp.did = NULL;
 	s->s3.tmp.sigalg = NULL;
+	s->s3.tmp.vc = NULL;
 
 	lu = find_did_sig_alg(s);
 	if (lu == NULL) {
@@ -482,6 +485,6 @@ int is_did_handshake(const SSL *s){
 	if(s == NULL || !SSL_IS_TLS13(s))
 		return 0;
 
-	return s->s3.did_methods_sent;
+	return s->s3.ssi_params_sent;
 }
 
