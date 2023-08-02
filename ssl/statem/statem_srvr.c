@@ -97,6 +97,9 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt)
 			if (mt == SSL3_MT_VC) {
 				st->hand_state = TLS_ST_SR_VC;
 				return 1;
+			} else if (mt == SSL3_MT_DID) {
+				st->hand_state = TLS_ST_SR_DID;
+				return 1;
 			}
 		}
         else {
@@ -1247,6 +1250,9 @@ size_t ossl_statem_server_max_message_size(SSL *s)
     case TLS_ST_SR_CERT:
         return s->max_cert_list;
 
+    case TLS_ST_SR_DID:
+        	return SSL3_RT_MAX_PLAIN_LENGTH;
+
     case TLS_ST_SR_VC:
     	return SSL3_RT_MAX_PLAIN_LENGTH;
 
@@ -1296,6 +1302,9 @@ MSG_PROCESS_RETURN ossl_statem_server_process_message(SSL *s, PACKET *pkt)
 
     case TLS_ST_SR_CERT:
         return tls_process_client_certificate(s, pkt);
+
+    case TLS_ST_SR_DID:
+        		return tls_process_client_did(s, pkt);
 
     case TLS_ST_SR_VC:
     		return tls_process_client_vc(s, pkt);

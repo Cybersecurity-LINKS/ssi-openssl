@@ -466,7 +466,7 @@ MSG_PROCESS_RETURN tls_process_ssi_request(SSL *s, PACKET *pkt)
 
 	OPENSSL_free(rawexts);
 
-	if (s->auth_method != s->ext.peer_ssiauth)
+	if (s->s3.ssi_params_sent && s->auth_method != s->ext.peer_ssiauth)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
@@ -932,7 +932,7 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt)
 	size_t params_n = 0;
 	BIO *did_pubkey = NULL;
 	char *server_did;
-	size_t context, did_len;
+	unsigned int context, did_len;
 	uint8_t method;
 
 	EVP_DID_CTX *ctx_did = NULL;
@@ -1069,7 +1069,7 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt)
 	EVP_DID_free(evp_did);
 	EVP_DID_CTX_free(ctx_did);
 
-	return WORK_FINISHED_CONTINUE;
+	return MSG_PROCESS_CONTINUE_READING;
 err:
 
 	OPENSSL_free(server_did);
@@ -1077,7 +1077,7 @@ err:
 	EVP_DID_free(evp_did);
 	EVP_DID_CTX_free(ctx_did);
 
-	return WORK_ERROR;
+	return MSG_PROCESS_ERROR;
 }
 
 int tls_construct_client_did(SSL *s, WPACKET *pkt)

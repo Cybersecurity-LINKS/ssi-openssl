@@ -253,7 +253,7 @@ VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 int send_ssi_request(SSL *s) {
 	if (
 	/* don't request did unless asked for it: */
-	s->verify_mode & SSL_VERIFY_PEER
+	s->verify_mode & SSL_VERIFY_PEER && s->ext.didmethods != NULL
 //			/*
 //			 * don't request if post-handshake-only unless doing
 //			 * post-handshake in TLSv1.3:

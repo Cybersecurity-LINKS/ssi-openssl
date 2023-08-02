@@ -2123,6 +2123,13 @@ int s_server_main(int argc, char *argv[])
     if (!set_cert_key_stuff(ctx, s_cert, s_key, s_chain, build_chain))
         goto end;
 
+    provider = OSSL_PROVIDER_load(NULL, "ssi");
+    if (provider == NULL) {
+        printf("SSI provider load failed\n");
+        ERR_print_errors(bio_err);
+        goto end;
+    }
+
     if (did) {
 		if (/* vc_file == NULL || */ !set_did_key_stuff(ctx, did_pkey, did))
 			goto end;
@@ -2136,13 +2143,6 @@ int s_server_main(int argc, char *argv[])
 	}
 
 	if (vc_file) {
-		provider = OSSL_PROVIDER_load(NULL, "ssi");
-		if (provider == NULL) {
-			printf("SSI provider load failed\n");
-			ERR_print_errors(bio_err);
-			goto end;
-		}
-
 		if (did == NULL || !SSL_CTX_set_vc(ctx, vc_file)) {
 			BIO_printf(bio_err, "Error setting VC\n");
 			goto end;
@@ -2153,15 +2153,6 @@ int s_server_main(int argc, char *argv[])
 		if (did_methods == NULL || !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
 			BIO_printf(bio_err, "Error setting trusted VC issuers\n");
 			goto end;
-		}
-
-		if (provider == NULL) {
-			provider = OSSL_PROVIDER_load(NULL, "ssi");
-			if (provider == NULL) {
-				printf("SSI provider load failed\n");
-				ERR_print_errors(bio_err);
-				goto end;
-			}
 		}
 	}
 
