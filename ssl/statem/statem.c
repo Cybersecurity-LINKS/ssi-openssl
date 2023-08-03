@@ -274,7 +274,7 @@ int ossl_statem_accept(SSL *s)
     a = state_machine(s, 1);
     gettimeofday(&tv2, NULL);
 
-    fprintf (stderr, "Total time = %f seconds\n\n",
+    printf ("Total time = %f seconds\n\n",
                          (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
                          (double) (tv2.tv_sec - tv1.tv_sec));
     return a;

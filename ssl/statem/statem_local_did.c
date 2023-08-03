@@ -13,7 +13,7 @@
 #include <openssl/evp_ssi.h>
 #include <openssl/core_names.h>
 
-int init_did(SSL *s, unsigned int context)
+int init_ssi_params(SSL *s, unsigned int context)
 {
 
 	/* Clear any supported did method received */
@@ -362,7 +362,7 @@ err:
 
 /*************************** SSI methods ***************************/
 
-EXT_RETURN tls_construct_ctos_did_methods(SSL *s, WPACKET *pkt,
+EXT_RETURN tls_construct_ctos_ssi_params(SSL *s, WPACKET *pkt,
 										  unsigned int context, X509 *x, size_t chainidx)
 {
 
@@ -373,7 +373,7 @@ EXT_RETURN tls_construct_ctos_did_methods(SSL *s, WPACKET *pkt,
 	if (s->ext.didmethods == NULL || s->ext.didmethods_len == 0)
 		return EXT_RETURN_NOT_SENT;
 
-	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_did_methods)
+	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_ssi_params)
 		/* Sub-packet for supported_dids extension */
 		|| !WPACKET_start_sub_packet_u16(pkt)
 		/* peer SSI authentication method */
@@ -391,7 +391,7 @@ EXT_RETURN tls_construct_ctos_did_methods(SSL *s, WPACKET *pkt,
 #endif
 }
 
-int tls_parse_stoc_did_methods(SSL *s, PACKET *pkt,
+int tls_parse_stoc_ssi_params(SSL *s, PACKET *pkt,
 							   unsigned int context, X509 *x, size_t chainidx)
 {
 
@@ -1127,7 +1127,7 @@ int tls_construct_client_did(SSL *s, WPACKET *pkt)
 
 /*************************** SSI methods ***************************/
 
-int tls_parse_ctos_did_methods(SSL *s, PACKET *pkt,
+int tls_parse_ctos_ssi_params(SSL *s, PACKET *pkt,
 							   unsigned int context, X509 *x, size_t chainidx)
 {
 
@@ -1154,7 +1154,7 @@ int tls_parse_ctos_did_methods(SSL *s, PACKET *pkt,
 	return 1;
 }
 
-EXT_RETURN tls_construct_stoc_did_methods(SSL *s, WPACKET *pkt,
+EXT_RETURN tls_construct_stoc_ssi_params(SSL *s, WPACKET *pkt,
 										  unsigned int context, X509 *x, size_t chainidx)
 {
 #ifndef OPENSSL_NO_TLS1_3
@@ -1178,7 +1178,7 @@ EXT_RETURN tls_construct_stoc_did_methods(SSL *s, WPACKET *pkt,
 		didmethodslen = s->ext.didmethods_len;
 	}
 
-	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_did_methods)
+	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_ssi_params)
 		/* Sub-packet for did methods extension */
 		|| !WPACKET_start_sub_packet_u16(pkt)
 		/* peer SSI authentication method */
@@ -1323,6 +1323,8 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
 
+	struct timeval tv1, tv2;
+
 	s->session->peer_did_doc = OPENSSL_zalloc(sizeof(DID_DOC));
 	DID_DOC *diddoc = s->session->peer_did_doc;
 	if (diddoc == NULL)
@@ -1423,6 +1425,8 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 
 	EVP_VC_CTX_free(ctx_vc);
 
+	gettimeofday(&tv1, NULL);
+
 	ctx_vc = EVP_VC_CTX_new(evp_vc);
 	if (ctx_vc == NULL)
 	{
@@ -1475,6 +1479,11 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
+
+	gettimeofday(&tv2, NULL);
+	printf("VC verify time = %f seconds\n\n",
+	   (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
+		(double)(tv2.tv_sec - tv1.tv_sec));
 
 	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
 	if (evp_did == NULL)
@@ -1626,7 +1635,6 @@ int tls_construct_server_did(SSL *s, WPACKET *pkt)
 
 MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 {
-
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 	BIO *did_pubkey = NULL;
@@ -1636,6 +1644,8 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
+
+	struct timeval tv1, tv2;
 
 	s->statem.enc_read_state = ENC_READ_STATE_VALID;
 
@@ -1677,6 +1687,8 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
+
+	gettimeofday(&tv1, NULL);
 
 	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
 	if (evp_did == NULL)
@@ -1720,6 +1732,11 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;
 	}
+
+	gettimeofday(&tv2, NULL);
+    printf("DID resolve time = %f seconds\n\n",
+           (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
+            (double)(tv2.tv_sec - tv1.tv_sec));
 
 	diddoc->atContext = OPENSSL_strdup(tmp->atContext);
 	diddoc->id = OPENSSL_strdup(tmp->id);
