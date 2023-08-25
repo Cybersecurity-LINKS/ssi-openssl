@@ -189,7 +189,6 @@ err:
 
 MSG_PROCESS_RETURN tls_process_did_verify(SSL *s, PACKET *pkt)
 {
-
 	/*EVP_PKEY *pkey = NULL;*/
 	const unsigned char *data;
 #ifndef OPENSSL_NO_GOST
@@ -398,7 +397,7 @@ int tls_parse_stoc_ssi_params(SSL *s, PACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET did_methods;
 
-	if (!PACKET_get_1(pkt, &s->auth_method) ||
+	if (!PACKET_get_1(pkt, &s->s3.auth_method) ||
 		!PACKET_as_length_prefixed_1(pkt, &did_methods) || PACKET_remaining(&did_methods) == 0)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
@@ -466,7 +465,7 @@ MSG_PROCESS_RETURN tls_process_ssi_request(SSL *s, PACKET *pkt)
 
 	OPENSSL_free(rawexts);
 
-	if (s->s3.ssi_params_sent && s->auth_method != s->ext.peer_ssiauth)
+	if (s->s3.ssi_params_sent && s->s3.auth_method != s->ext.peer_ssiauth)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
@@ -681,6 +680,24 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst)
 		goto err;
 	}
 
+	if (s->trusted_issuers == NULL)
+		goto err;
+
+	/*for(p = s->trusted_issuers, i = 0; i < s->trusted_issuers_num; i++, p++){
+		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
+			issuer_pubkey = p->pubkey;
+	}*/
+
+	if(strcmp(s->trusted_issuers->verificationMethod, vc->verificationMethod) != 0){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		goto err;
+	}
+
+	issuer_pubkey = s->trusted_issuers->pubkey;
+
+	if (issuer_pubkey == NULL)
+		goto err;
+
 	if (vc->atContext != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_CONTEXT, vc->atContext, 0);
 	if (vc->id != NULL)
@@ -706,18 +723,6 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst)
 	if (vc->proofValue != NULL)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
-
-	if (s->trusted_issuers == NULL)
-		goto err;
-
-	/*for(p = s->trusted_issuers, i = 0; i < s->trusted_issuers_num; i++, p++){
-		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
-			issuer_pubkey = p->pubkey;
-	}*/
-	issuer_pubkey = s->trusted_issuers->pubkey;
-
-	if (issuer_pubkey == NULL)
-		goto err;
 
 	if (!EVP_VC_verify(ctx_vc, issuer_pubkey, params))
 	{
@@ -1134,7 +1139,7 @@ int tls_parse_ctos_ssi_params(SSL *s, PACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET did_methods;
 
-	if (!PACKET_get_1(pkt, &s->auth_method) ||
+	if (!PACKET_get_1(pkt, &s->s3.auth_method) ||
 		!PACKET_as_length_prefixed_1(pkt, &did_methods) || PACKET_remaining(&did_methods) == 0)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
@@ -1425,7 +1430,7 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 
 	EVP_VC_CTX_free(ctx_vc);
 
-	gettimeofday(&tv1, NULL);
+	/* gettimeofday(&tv1, NULL); */
 
 	ctx_vc = EVP_VC_CTX_new(evp_vc);
 	if (ctx_vc == NULL)
@@ -1433,6 +1438,23 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
+
+	if (s->trusted_issuers == NULL)
+		goto err;
+
+	/*for(i = 0, p = s->trusted_issuers; i < s->trusted_issuers_num; i++, p++){
+		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
+			issuer_pubkey = p->pubkey;
+	}*/
+
+	if(strcmp(s->trusted_issuers->verificationMethod, vc->verificationMethod) != 0){
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+		goto err;
+	}
+
+	issuer_pubkey = s->trusted_issuers->pubkey;
+	if (issuer_pubkey == NULL)
+		goto err;
 
 	params_n = 0;
 
@@ -1462,28 +1484,16 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 		params[params_n++] = OSSL_PARAM_construct_utf8_string(OSSL_VC_PARAM_PROOF_VALUE, vc->proofValue, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
-	if (s->trusted_issuers == NULL)
-		goto err;
-
-	/*for(i = 0, p = s->trusted_issuers; i < s->trusted_issuers_num; i++, p++){
-		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
-			issuer_pubkey = p->pubkey;
-	}*/
-
-	issuer_pubkey = s->trusted_issuers->pubkey;
-	if (issuer_pubkey == NULL)
-		goto err;
-
 	if (!EVP_VC_verify(ctx_vc, issuer_pubkey, params))
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 
-	gettimeofday(&tv2, NULL);
+	/* gettimeofday(&tv2, NULL);
 	printf("VC verify time = %f seconds\n\n",
 	   (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
-		(double)(tv2.tv_sec - tv1.tv_sec));
+		(double)(tv2.tv_sec - tv1.tv_sec)); */
 
 	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
 	if (evp_did == NULL)
@@ -1688,7 +1698,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		goto err;
 	}
 
-	gettimeofday(&tv1, NULL);
+	/* gettimeofday(&tv1, NULL); */
 
 	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
 	if (evp_did == NULL)
@@ -1733,10 +1743,10 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		goto err;
 	}
 
-	gettimeofday(&tv2, NULL);
+	/* gettimeofday(&tv2, NULL);
     printf("DID resolve time = %f seconds\n\n",
            (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
-            (double)(tv2.tv_sec - tv1.tv_sec));
+            (double)(tv2.tv_sec - tv1.tv_sec)); */
 
 	diddoc->atContext = OPENSSL_strdup(tmp->atContext);
 	diddoc->id = OPENSSL_strdup(tmp->id);

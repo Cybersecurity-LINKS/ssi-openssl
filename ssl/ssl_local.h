@@ -1243,9 +1243,6 @@ struct ssl_st {
      */
     int version;
 
-#ifndef OPENSSL_NO_TLS1_3
-    uint8_t auth_method;
-#endif
     /* SSLv3 */
     const SSL_METHOD *method;
     /*
@@ -1475,6 +1472,9 @@ struct ssl_st {
         uint16_t group_id;
         EVP_PKEY *peer_tmp;
 
+#ifndef OPENSSL_NO_TLS1_3
+        uint8_t auth_method;
+#endif
     } s3;
 
     struct dtls1_state_st *d1;  /* DTLSv1 variables */

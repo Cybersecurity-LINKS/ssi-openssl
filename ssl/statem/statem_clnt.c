@@ -504,10 +504,10 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
         else if ((s->options & SSL_OP_ENABLE_MIDDLEBOX_COMPAT) != 0
                  && s->hello_retry_request == SSL_HRR_NONE)
             st->hand_state = TLS_ST_CW_CHANGE;
-        else if (s->auth_method == CERTIFICATE_AUTHN)
+        else if (s->s3.auth_method == CERTIFICATE_AUTHN)
             st->hand_state = (s->s3.tmp.cert_req != 0) ? TLS_ST_CW_CERT
                                                         : TLS_ST_CW_FINISHED;
-        else if (s->auth_method == DID_AUTHN)
+        else if (s->s3.auth_method == DID_AUTHN)
             st->hand_state =
 					(s->s3.tmp.ssi_req != 0) ?
 							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
@@ -525,11 +525,11 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s)
 
     case TLS_ST_CW_END_OF_EARLY_DATA:
     case TLS_ST_CW_CHANGE:
-    	if(s->auth_method == CERTIFICATE_AUTHN)
+    	if(s->s3.auth_method == CERTIFICATE_AUTHN)
     				st->hand_state =
     						(s->s3.tmp.cert_req != 0) ?
     								TLS_ST_CW_CERT : TLS_ST_CW_FINISHED;
-        else if (s->auth_method == DID_AUTHN)
+        else if (s->s3.auth_method == DID_AUTHN)
             st->hand_state =
 					(s->s3.tmp.ssi_req != 0) ?
 							TLS_ST_CW_DID : TLS_ST_CW_FINISHED;
@@ -1217,7 +1217,7 @@ WORK_STATE ossl_statem_client_post_process_message(SSL *s, WORK_STATE wst)
     	return tls_post_process_server_vc(s, wst);
     case TLS_ST_CR_CERT_VRFY:
     case TLS_ST_CR_DID_VRFY:
-    	if(SSL_IS_TLS13(s) && (s->auth_method == VC_AUTHN || s->auth_method == DID_AUTHN))
+    	if(SSL_IS_TLS13(s) && (s->s3.auth_method == VC_AUTHN || s->s3.auth_method == DID_AUTHN))
     		return tls_prepare_client_ssi(s, wst);
     	else
     		return tls_prepare_client_certificate(s, wst);
@@ -2471,7 +2471,7 @@ MSG_PROCESS_RETURN tls_process_certificate_request(SSL *s, PACKET *pkt)
 {
     size_t i;
 
-    s->auth_method = CERTIFICATE_AUTHN;
+    s->s3.auth_method = CERTIFICATE_AUTHN;
     /* Clear certificate validity flags */
     for (i = 0; i < SSL_PKEY_NUM; i++)
         s->s3.tmp.valid_flags[i] = 0;

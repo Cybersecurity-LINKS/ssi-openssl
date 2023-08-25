@@ -793,7 +793,6 @@ static int new_session_cb(SSL *s, SSL_SESSION *sess)
 
 int s_client_main(int argc, char **argv)
 {
-	struct timeval tv1, tv2;
 	EVP_PKEY *did_pkey = NULL;
     BIO *sbio;
     EVP_PKEY *key = NULL;
@@ -2910,12 +2909,7 @@ int s_client_main(int argc, char **argv)
             BIO_printf(bio_err, "TIMEOUT occurred\n");
 
         if (!ssl_pending && FD_ISSET(SSL_get_fd(con), &writefds)) {
-        	gettimeofday(&tv1, NULL);
             k = SSL_write(con, &(cbuf[cbuf_off]), (unsigned int)cbuf_len);
-            gettimeofday(&tv2, NULL);
-            printf ("Total time = %f seconds\n\n",
-                     (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
-                     (double) (tv2.tv_sec - tv1.tv_sec));
             switch (SSL_get_error(con, k)) {
             case SSL_ERROR_NONE:
                 cbuf_off += k;

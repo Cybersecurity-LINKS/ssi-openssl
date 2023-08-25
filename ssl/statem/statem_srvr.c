@@ -511,15 +511,15 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
     case TLS_ST_SW_ENCRYPTED_EXTENSIONS:
         if (s->hit)
             st->hand_state = TLS_ST_SW_FINISHED;
-		/* else if (s->auth_method == s->ext.peer_ssiauth && send_ssi_request(s))
+		/* else if (s->s3.auth_method == s->ext.peer_ssiauth && send_ssi_request(s))
 		 	 st->hand_state = TLS_ST_SW_SSI_REQ; */
         else if ((s->ext.peer_ssiauth == DID_AUTHN || s->ext.peer_ssiauth == VC_AUTHN) && send_ssi_request(s))
 		 	 st->hand_state = TLS_ST_SW_SSI_REQ;
 		else if (s->ext.peer_ssiauth != DID_AUTHN && s->ext.peer_ssiauth != VC_AUTHN && send_certificate_request(s))
 		 	 st->hand_state = TLS_ST_SW_CERT_REQ;
-		else if (s->auth_method == CERTIFICATE_AUTHN)
+		else if (s->s3.auth_method == CERTIFICATE_AUTHN)
 			st->hand_state = TLS_ST_SW_CERT;
-        else if (s->auth_method == DID_AUTHN)
+        else if (s->s3.auth_method == DID_AUTHN)
             st->hand_state = TLS_ST_SW_DID;
 		else
 			st->hand_state = TLS_ST_SW_VC;
@@ -530,9 +530,9 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
         if (s->post_handshake_auth == SSL_PHA_REQUEST_PENDING) {
             s->post_handshake_auth = SSL_PHA_REQUESTED;
             st->hand_state = TLS_ST_OK;
-        } else if(s->auth_method == DID_AUTHN) {
+        } else if(s->s3.auth_method == DID_AUTHN) {
 			st->hand_state = TLS_ST_SW_DID;
-        } else if(s->auth_method == VC_AUTHN) {
+        } else if(s->s3.auth_method == VC_AUTHN) {
         	st->hand_state = TLS_ST_SW_VC;
         } else {
             st->hand_state = TLS_ST_SW_CERT;
@@ -540,9 +540,9 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
         return WRITE_TRAN_CONTINUE;
 
 	case TLS_ST_SW_SSI_REQ:
-        if(s->auth_method == DID_AUTHN)
+        if(s->s3.auth_method == DID_AUTHN)
 			st->hand_state = TLS_ST_SW_DID;
-		else if(s->auth_method == VC_AUTHN)
+		else if(s->s3.auth_method == VC_AUTHN)
 			st->hand_state = TLS_ST_SW_VC;
 		else
 			st->hand_state = TLS_ST_SW_CERT;
@@ -2158,11 +2158,11 @@ static int tls_early_post_process_client_hello(SSL *s)
 				/*SSLfatal() already called*/
 				goto err;
 			}
-            if((s->auth_method == VC_AUTHN || s->auth_method == DID_AUTHN) && send_ssi_request(s))
-                if(s->auth_method != s->ext.peer_ssiauth)
+            if((s->s3.auth_method == VC_AUTHN || s->s3.auth_method == DID_AUTHN) && send_ssi_request(s))
+                if(s->s3.auth_method != s->ext.peer_ssiauth)
                     goto err;
-		} else
-			s->auth_method = CERTIFICATE_AUTHN;
+            } /* else
+			s->s3.auth_method = CERTIFICATE_AUTHN; */
     }
 
     sk_SSL_CIPHER_free(ciphers);
@@ -2352,11 +2352,11 @@ WORK_STATE tls_post_process_client_hello(SSL *s, WORK_STATE wst)
                 s->s3.tmp.new_cipher = cipher;
             }
             if (!s->hit) {
-                if (s->auth_method == CERTIFICATE_AUTHN
+                if (s->s3.auth_method == CERTIFICATE_AUTHN
 						&& !tls_choose_sigalg(s, 1)) {
                     /* SSLfatal already called */
                     goto err;
-                } else if ((s->auth_method == VC_AUTHN || s->auth_method == DID_AUTHN)
+                } else if ((s->s3.auth_method == VC_AUTHN || s->s3.auth_method == DID_AUTHN)
 						&& !tls_choose_did_sigalg(s, 1)) {
 					/* SSLfatal already called */
 					goto err;
@@ -3652,12 +3652,12 @@ MSG_PROCESS_RETURN tls_process_client_certificate(SSL *s, PACKET *pkt)
         }
     } else {
         EVP_PKEY *pkey;
-        gettimeofday(&tv1, NULL);
+        /* gettimeofday(&tv1, NULL); */
         i = ssl_verify_cert_chain(s, sk);
-        gettimeofday(&tv2, NULL);
+        /* gettimeofday(&tv2, NULL);
         printf("certificate chain verify time = %f seconds\n\n",
            (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
-            (double)(tv2.tv_sec - tv1.tv_sec));
+            (double)(tv2.tv_sec - tv1.tv_sec)); */
         if (i <= 0) {
             SSLfatal(s, ssl_x509err2alert(s->verify_result),
                      SSL_R_CERTIFICATE_VERIFY_FAILED);

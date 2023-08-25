@@ -143,11 +143,11 @@ int tls13_set_server_did_methods(SSL *s) {
 
 	if(s->ext.peer_didmethods == NULL) {
 		/* the client did not send the supported did methods extension */
-		s->auth_method = CERTIFICATE_AUTHN;
+		s->s3.auth_method = CERTIFICATE_AUTHN;
 		return 1;
 	} else if (is_did_method_supported(s)){
 		/* The server has a DID compatible with the client's DID methods */
-		/* s->auth_method = s->ext.ssi_authn; */ 
+		/* s->s3.auth_method = s->ext.ssi_authn; */ 
 		if(s->ext.didmethods != NULL)
 			/* if the server has supported did methods to send set the ones in common with the client */
 			if(!tls13_set_shared_didmethods(s))
