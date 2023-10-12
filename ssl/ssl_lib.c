@@ -21,6 +21,8 @@
 #include <openssl/async.h>
 #include <openssl/ct.h>
 #include <openssl/trace.h>
+#include <ssl/ssl_local_did.h>
+#include <ssl/ssl_local_vc.h>
 #include "internal/cryptlib.h"
 #include "internal/refcount.h"
 #include "internal/ktls.h"
@@ -725,6 +727,17 @@ SSL *SSL_new(SSL_CTX *ctx)
     if (s->cert == NULL)
         goto err;
 
+	s->did = ssl_did_dup(ctx->did);
+	if (s->did == NULL)
+		goto err;
+
+	s->vc = ssl_vc_dup(ctx->vc);
+	if(s->vc == NULL)
+		goto err;
+
+	s->trusted_issuers	 = ssl_vc_issuers_dup(ctx->trusted_issuers, ctx->trusted_issuers_num);
+	s->trusted_issuers_num = ctx->trusted_issuers_num;
+
     RECORD_LAYER_set_read_ahead(&s->rlayer, ctx->read_ahead);
     s->msg_callback = ctx->msg_callback;
     s->msg_callback_arg = ctx->msg_callback_arg;
@@ -790,6 +803,19 @@ SSL *SSL_new(SSL_CTX *ctx)
         }
         s->ext.supportedgroups_len = ctx->ext.supportedgroups_len;
     }
+	if (ctx->ext.didmethods) {
+		s->ext.didmethods = OPENSSL_memdup(
+				ctx->ext.didmethods,
+				ctx->ext.didmethods_len
+						* sizeof(*ctx->ext.didmethods));
+		if (!s->ext.didmethods) {
+			s->ext.didmethods_len = 0;
+			goto err;
+		}
+		s->ext.didmethods_len = ctx->ext.didmethods_len;
+	}
+
+    s->ext.peer_ssiauth = ctx->ext.peer_ssiauth;
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
     s->ext.npn = NULL;
@@ -3255,6 +3281,12 @@ SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
     ret->verify_mode = SSL_VERIFY_NONE;
     if ((ret->cert = ssl_cert_new()) == NULL)
         goto err;
+
+    if ((ret->did = ssl_did_new()) == NULL)
+        goto err;
+
+    if ((ret->vc = ssl_vc_new()) == NULL)
+    	goto err;
 
     ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
     if (ret->sessions == NULL)

@@ -56,6 +56,8 @@ typedef unsigned int u_int;
 #endif
 #include "internal/sockets.h"
 
+#include <openssl/provider.h>
+
 static int not_resumable_sess_cb(SSL *s, int is_forward_secure);
 static int sv_body(int s, int stype, int prot, unsigned char *context);
 static int www_body(int s, int stype, int prot, unsigned char *context);
@@ -72,8 +74,8 @@ static void print_connection_info(SSL *con);
 static const int bufsize = 16 * 1024;
 static int accept_socket = -1;
 
-#define TEST_CERT       "server.pem"
-#define TEST_CERT2      "server2.pem"
+#define TEST_CERT       "apps/server.pem"
+#define TEST_CERT2      "apps/server2.pem"
 
 static int s_nbio = 0;
 static int s_nbio_test = 0;
@@ -722,7 +724,11 @@ typedef enum OPTION_choice {
     OPT_S_ENUM,
     OPT_V_ENUM,
     OPT_X_ENUM,
-    OPT_PROV_ENUM
+    OPT_PROV_ENUM,
+	OPT_DID,
+	OPT_DID_METHODS,
+	OPT_VC,
+	OPT_VCIFILE
 } OPTION_CHOICE;
 
 const OPTIONS s_server_options[] = {
@@ -961,8 +967,13 @@ const OPTIONS s_server_options[] = {
 #ifndef OPENSSL_NO_KTLS
     {"sendfile", OPT_SENDFILE, '-', "Use sendfile to response file with -WWW"},
 #endif
-
-    OPT_R_OPTIONS,
+	{ "did", OPT_DID, 's',
+			"Set the server did to send to the client" },
+	{ "did_methods", OPT_DID_METHODS, 's',
+			"list of did methods supported by the server (comma-separated list)" },
+	{ "vc", OPT_VC, 's', "server's VC"},
+	{ "VCIfile", OPT_VCIFILE, 's', "File that contains the list of VC issuers trusted by the server" },
+	OPT_R_OPTIONS,
     OPT_S_OPTIONS,
     OPT_V_OPTIONS,
     OPT_X_OPTIONS,
@@ -976,6 +987,7 @@ const OPTIONS s_server_options[] = {
 
 int s_server_main(int argc, char *argv[])
 {
+	EVP_PKEY *did_pkey = NULL;
     ENGINE *engine = NULL;
     EVP_PKEY *s_key = NULL, *s_dkey = NULL;
     SSL_CONF_CTX *cctx = NULL;
@@ -1054,6 +1066,13 @@ int s_server_main(int argc, char *argv[])
     int sctp_label_bug = 0;
 #endif
     int ignore_unexpected_eof = 0;
+    char *did = NULL;
+    const char *did_methods = NULL;
+
+    char *vc_file = NULL;
+    char *vc_issuers_file = NULL;
+
+    OSSL_PROVIDER *provider = NULL;
 
     /* Init of few remaining global variables */
     local_argc = argc;
@@ -1643,6 +1662,18 @@ int s_server_main(int argc, char *argv[])
         case OPT_IGNORE_UNEXPECTED_EOF:
             ignore_unexpected_eof = 1;
             break;
+		case OPT_DID:
+			did = opt_arg();
+			break;
+		case OPT_DID_METHODS:
+			did_methods = opt_arg();
+			break;
+		case OPT_VC:
+			vc_file = opt_arg();
+			break;
+		case OPT_VCIFILE:
+			vc_issuers_file = opt_arg();
+			break;
         }
     }
 
@@ -1752,6 +1783,11 @@ int s_server_main(int argc, char *argv[])
                 goto end;
         }
     }
+
+    if (did)
+		did_pkey = load_key(s_key_file, 0, 0, NULL,
+		NULL, "server did private key");
+
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
     if (next_proto_neg_in) {
         next_proto.data = next_protos_parse(&next_proto.len, next_proto_neg_in);
@@ -2087,6 +2123,39 @@ int s_server_main(int argc, char *argv[])
 
     if (!set_cert_key_stuff(ctx, s_cert, s_key, s_chain, build_chain))
         goto end;
+
+    provider = OSSL_PROVIDER_load(NULL, "ssi");
+    if (provider == NULL) {
+        printf("SSI provider load failed\n");
+        ERR_print_errors(bio_err);
+        goto end;
+    }
+
+    if (did) {
+		if (/* vc_file == NULL || */ !set_did_key_stuff(ctx, did_pkey, did))
+			goto end;
+    }
+
+	if (did_methods) {
+		if (/* vc_issuers_file == NULL || */ !SSL_CTX_set_did_methods(ctx, did_methods)) {
+			BIO_printf(bio_err, "Error setting did_methods\n");
+			goto end;
+		}
+	}
+
+	if (vc_file) {
+		if (did == NULL || !SSL_CTX_set_vc(ctx, vc_file)) {
+			BIO_printf(bio_err, "Error setting VC\n");
+			goto end;
+		}
+	}
+
+	if (vc_issuers_file) {
+		if (did_methods == NULL || !SSL_CTX_set_vc_issuers(ctx, vc_issuers_file)) {
+			BIO_printf(bio_err, "Error setting trusted VC issuers\n");
+			goto end;
+		}
+	}
 
     if (s_serverinfo_file != NULL
         && !SSL_CTX_use_serverinfo_file(ctx, s_serverinfo_file)) {

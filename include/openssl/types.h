@@ -229,6 +229,15 @@ typedef struct ossl_decoder_ctx_st OSSL_DECODER_CTX;
 
 typedef struct ossl_self_test_st OSSL_SELF_TEST;
 
+typedef struct evp_did_ctx_st EVP_DID_CTX;
+typedef struct evp_did_st EVP_DID;
+typedef struct did_doc_st DID_DOC;
+
+typedef struct evp_vc_ctx_st EVP_VC_CTX;
+typedef struct evp_vc_st EVP_VC;
+typedef struct vc_st VC;
+typedef struct vc_issuer_st VC_ISSUER;
+
 #ifdef  __cplusplus
 }
 #endif

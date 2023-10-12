@@ -27,6 +27,8 @@
 # include <openssl/async.h>
 # include <openssl/symhacks.h>
 # include <openssl/ct.h>
+
+# include <crypto/evp_ssi.h>
 # include "record/record.h"
 # include "statem/statem.h"
 # include "internal/packet.h"
@@ -35,6 +37,8 @@
 # include "internal/tsan_assist.h"
 # include "internal/bio.h"
 # include "internal/ktls.h"
+# include <crypto/vc.h>
+# include <crypto/did.h>
 
 # ifdef OPENSSL_BUILD_SHLIBSSL
 #  undef OPENSSL_EXTERN
@@ -587,7 +591,13 @@ struct ssl_session_st {
     X509 *peer;
     /* Certificate chain peer sent. */
     STACK_OF(X509) *peer_chain;
-    /*
+	/* This is the public key of the DID document of the other end */
+	DID_DOC *peer_did_doc;
+	/* This the peer's VC */
+	VC *peer_vc;
+	/* peer serialized VC */
+	/* unsigned char *peer_vc_stream; */
+	/*
      * when app_verify_callback accepts a session where the peer's
      * certificate is not ok, we must remember the error for session reuse:
      */
@@ -767,6 +777,7 @@ typedef enum tlsext_index_en {
     TLSEXT_IDX_early_data,
     TLSEXT_IDX_certificate_authorities,
     TLSEXT_IDX_padding,
+	TLSEXT_IDX_ssi_params,
     TLSEXT_IDX_psk,
     /* Dummy index - must always be the last entry */
     TLSEXT_IDX_num_builtins
@@ -974,6 +985,11 @@ struct ssl_ctx_st {
     size_t max_cert_list;
 
     struct cert_st /* CERT */ *cert;
+    struct did_st /* DID */ *did;
+    VC *vc;
+    VC_ISSUER *trusted_issuers;
+    size_t trusted_issuers_num;
+
     int read_ahead;
 
     /* callback that allows applications to peek at protocol messages */
@@ -1069,6 +1085,12 @@ struct ssl_ctx_st {
 
         uint16_t *supported_groups_default;
         size_t supported_groups_default_len;
+
+        size_t didmethods_len;
+        /* our list */
+        uint8_t *didmethods;
+
+        uint8_t peer_ssiauth;
         /*
          * ALPN information (we are in the process of transitioning from NPN to
          * ALPN.)
@@ -1208,6 +1230,11 @@ struct ssl_ctx_st {
 };
 
 typedef struct cert_pkey_st CERT_PKEY;
+typedef struct did_pkey_st DID_PKEY;
+
+#define CERTIFICATE_AUTHN 0
+#define DID_AUTHN 1
+#define VC_AUTHN 2
 
 struct ssl_st {
     /*
@@ -1215,6 +1242,7 @@ struct ssl_st {
      * DTLS1_VERSION)
      */
     int version;
+
     /* SSLv3 */
     const SSL_METHOD *method;
     /*
@@ -1316,6 +1344,8 @@ struct ssl_st {
             EVP_PKEY *pkey;         /* holds short lived key exchange key */
             /* used for certificate requests */
             int cert_req;
+            /* used for vc_requests */
+            int ssi_req;
             /* Certificate types in certificate request message. */
             uint8_t *ctype;
             size_t ctype_len;
@@ -1332,6 +1362,7 @@ struct ssl_st {
 # else
             char *new_compression;
 # endif
+            int ssi_request;
             int cert_request;
             /* Raw values of the cipher list from a client */
             unsigned char *ciphers_raw;
@@ -1348,6 +1379,12 @@ struct ssl_st {
             const struct sigalg_lookup_st *sigalg;
             /* Pointer to certificate we use */
             CERT_PKEY *cert;
+            /* Pointer to did we use */
+            DID_PKEY *did;
+            /* Pointer to the VC we use */
+            VC *vc;
+            /* serialized VC */
+            unsigned char *vc_stream;
             /*
              * signature algorithms peer reports: e.g. supported signature
              * algorithms extension for server or as part of a certificate
@@ -1414,6 +1451,8 @@ struct ssl_st {
         size_t alpn_proposed_len;
         /* used by the client to know if it actually sent alpn */
         int alpn_sent;
+        /* used by client to know if it actually sent DID methods*/
+        int ssi_params_sent;
 
         /*
          * This is set to true if we believe that this is a version of Safari
@@ -1433,6 +1472,9 @@ struct ssl_st {
         uint16_t group_id;
         EVP_PKEY *peer_tmp;
 
+#ifndef OPENSSL_NO_TLS1_3
+        uint8_t auth_method;
+#endif
     } s3;
 
     struct dtls1_state_st *d1;  /* DTLSv1 variables */
@@ -1482,6 +1524,11 @@ struct ssl_st {
     /* client cert? */
     /* This is used to hold the server certificate used */
     struct cert_st /* CERT */ *cert;
+    struct did_st /* DID */ *did;
+    VC *vc;
+    unsigned char *vc_stream;
+    VC_ISSUER *trusted_issuers;
+    size_t trusted_issuers_num;
 
     /*
      * The hash of all messages prior to the CertificateVerify, and the length
@@ -1489,6 +1536,13 @@ struct ssl_st {
      */
     unsigned char cert_verify_hash[EVP_MAX_MD_SIZE];
     size_t cert_verify_hash_len;
+
+	/*
+	 * The hash of all messages prior to the DidVerify, and the length
+	 * of that hash.
+	 */
+	unsigned char did_verify_hash[EVP_MAX_MD_SIZE];
+	size_t did_verify_hash_len;
 
     /* Flag to indicate whether we should send a HelloRetryRequest or not */
     enum {SSL_HRR_NONE = 0, SSL_HRR_PENDING, SSL_HRR_COMPLETE}
@@ -1621,6 +1675,16 @@ struct ssl_st {
         size_t peer_supportedgroups_len;
          /* peer's list */
         uint16_t *peer_supportedgroups;
+
+		size_t didmethods_len;
+		/* our list */
+		uint8_t *didmethods;
+
+        uint8_t peer_ssiauth;
+
+		size_t peer_didmethods_len;
+		/* peer's list */
+		uint8_t *peer_didmethods;
 
         /* TLS Session Ticket extension override */
         TLS_SESSION_TICKET_EXT *session_ticket;
@@ -1799,6 +1863,13 @@ struct ssl_st {
      */
     const struct sigalg_lookup_st **shared_sigalgs;
     size_t shared_sigalgslen;
+
+    /*
+	 * Signature algorithms shared by client and server: cached because these
+	 * are used most often.
+	 */
+    uint8_t *shared_didmethods;
+    size_t shared_didmethodslen;
 };
 
 /*
@@ -1953,6 +2024,15 @@ struct cert_pkey_st {
     unsigned char *serverinfo;
     size_t serverinfo_length;
 };
+
+struct did_pkey_st {
+	unsigned char *did;
+	size_t did_len;
+
+	uint8_t did_method;
+	EVP_PKEY *privatekey;
+};
+
 /* Retrieve Suite B flags */
 # define tls1_suiteb(s)  (s->cert->cert_flags & SSL_CERT_FLAG_SUITEB_128_LOS)
 /* Uses to check strict mode: suite B modes are always strict */
@@ -2067,6 +2147,13 @@ typedef struct cert_st {
     CRYPTO_REF_COUNT references;             /* >1 only if SSL_copy_session_id is used */
     CRYPTO_RWLOCK *lock;
 } CERT;
+
+typedef struct did_st {
+	DID_PKEY *key;
+	DID_PKEY pkeys[SSL_PKEY_NUM];
+	/*CRYPTO_REF_COUNT references;             >1 only if SSL_copy_session_id is used */
+	/*CRYPTO_RWLOCK *lock;*/
+} DID;
 
 # define FP_ICC  (int (*)(const void *,const void *))
 

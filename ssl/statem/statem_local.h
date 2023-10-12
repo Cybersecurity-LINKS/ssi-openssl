@@ -7,6 +7,9 @@
  * https://www.openssl.org/source/license.html
  */
 
+#ifndef SSL_STATEM_LOCAL_H_
+#define SSL_STATEM_LOCAL_H_
+
 /*****************************************************************************
  *                                                                           *
  * The following definitions are PRIVATE to the state machine. They should   *
@@ -428,3 +431,5 @@ int tls_handle_alpn(SSL *s);
 
 int tls13_save_handshake_digest_for_pha(SSL *s);
 int tls13_restore_handshake_digest_for_pha(SSL *s);
+
+#endif /* SSL_STATEM_LOCAL_H_ */

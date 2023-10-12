@@ -188,6 +188,17 @@ int set_cert_key_stuff(SSL_CTX *ctx, X509 *cert, EVP_PKEY *key,
     return 1;
 }
 
+int set_did_key_stuff(SSL_CTX *ctx, EVP_PKEY *key, char *did) {
+
+	if (SSL_CTX_use_did_PrivateKey(ctx, key, did) <= 0) {
+		BIO_printf(bio_err, "error setting did and private key\n");
+		ERR_print_errors(bio_err);
+		return 0;
+	}
+
+	return 1;
+}
+
 static STRINT_PAIR cert_type_list[] = {
     {"RSA sign", TLS_CT_RSA_SIGN},
     {"DSA sign", TLS_CT_DSS_SIGN},

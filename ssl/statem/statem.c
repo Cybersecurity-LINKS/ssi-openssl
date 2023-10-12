@@ -262,12 +262,32 @@ void ossl_statem_set_hello_verify_done(SSL *s)
 
 int ossl_statem_connect(SSL *s)
 {
-    return state_machine(s, 0);
+	struct timeval tv1, tv2;
+	int a;
+
+	gettimeofday(&tv1, NULL);
+    a = state_machine(s, 0);
+    gettimeofday(&tv2, NULL);
+
+    printf ("Total time = %f seconds\n\n",
+                             (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
+                             (double) (tv2.tv_sec - tv1.tv_sec));
+    return a;
 }
 
 int ossl_statem_accept(SSL *s)
 {
-    return state_machine(s, 1);
+	struct timeval tv1, tv2;
+	int a;
+
+	gettimeofday(&tv1, NULL);
+    a = state_machine(s, 1);
+    gettimeofday(&tv2, NULL);
+
+    printf ("Total time = %f seconds\n\n",
+                         (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
+                         (double) (tv2.tv_sec - tv1.tv_sec));
+    return a;
 }
 
 typedef void (*info_cb) (const SSL *, int, int);

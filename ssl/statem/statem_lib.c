@@ -20,6 +20,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/trace.h>
+#include <ssl/ssl_local_did.h>
 
 /*
  * Map error codes to TLS/SSL alart types.
@@ -181,6 +182,7 @@ int tls_setup_handshake(SSL *s)
             ssl_tsan_counter(s->ctx, &s->ctx->stats.sess_accept_renegotiate);
 
             s->s3.tmp.cert_request = 0;
+            s->s3.tmp.ssi_request = 0;
         }
     } else {
         if (SSL_IS_FIRST_HANDSHAKE(s))
@@ -197,6 +199,7 @@ int tls_setup_handshake(SSL *s)
 
         if (SSL_IS_DTLS(s))
             s->statem.use_timer = 1;
+        	s->s3.tmp.ssi_request = 0;
     }
 
     return 1;
@@ -542,13 +545,13 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 
     /*
      * In TLSv1.3 on the client side we make sure we prepare the client
-     * certificate after the CertVerify instead of when we get the
+     * certificate/DID after the CertVerify instead of when we get the
      * CertificateRequest. This is because in TLSv1.3 the CertificateRequest
      * comes *before* the Certificate message. In TLSv1.2 it comes after. We
      * want to make sure that SSL_get1_peer_certificate() will return the actual
      * server certificate from the client_cert_cb callback.
      */
-    if (!s->server && SSL_IS_TLS13(s) && s->s3.tmp.cert_req == 1)
+    if (!s->server && SSL_IS_TLS13(s) && (s->s3.tmp.cert_req == 1 || s->s3.tmp.ssi_req == 1))
         ret = MSG_PROCESS_CONTINUE_PROCESSING;
     else
         ret = MSG_PROCESS_CONTINUE_READING;
@@ -579,6 +582,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
     if (SSL_IS_TLS13(s)
             && !s->server
             && s->s3.tmp.cert_req == 0
+			&& s->s3.tmp.ssi_req == 0
             && (!s->method->ssl3_enc->change_cipher_state(s,
                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE))) {;
         /* SSLfatal() already called */
@@ -1552,7 +1556,7 @@ static int is_tls13_capable(const SSL *s)
         default:
             break;
         }
-        if (!ssl_has_cert(s, i))
+        if (!ssl_has_cert(s, i) && !ssl_has_did(s, i))
             continue;
         if (i != SSL_PKEY_ECC)
             return 1;
@@ -1561,7 +1565,7 @@ static int is_tls13_capable(const SSL *s)
          * more restrictive so check that our sig algs are consistent with this
          * EC cert. See section 4.2.3 of RFC8446.
          */
-        curve = ssl_get_EC_curve_nid(s->cert->pkeys[SSL_PKEY_ECC].privatekey);
+        curve = ssl_get_EC_curve_nid(s->cert->pkeys[SSL_PKEY_ECC].privatekey != NULL ? s->cert->pkeys[SSL_PKEY_ECC].privatekey : s->did->pkeys[SSL_PKEY_ECC].privatekey);
         if (tls_check_sigalg_curve(s, curve))
             return 1;
     }
