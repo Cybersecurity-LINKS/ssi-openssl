@@ -1,4 +1,8 @@
 /*
+ * Modifications Copyright 2023 Fondazione LINKS
+ */
+
+/*
  * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved
  * Copyright 2005 Nokia. All rights reserved.
@@ -27,7 +31,7 @@
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
 #include "internal/cryptlib.h"
-#include <ssl/statem/statem_local_did.h>
+#include <ssl/statem/statem_local_ssi.h>
 
 static MSG_PROCESS_RETURN tls_process_as_hello_retry_request(SSL *s, PACKET *pkt);
 static MSG_PROCESS_RETURN tls_process_encrypted_extensions(SSL *s, PACKET *pkt);

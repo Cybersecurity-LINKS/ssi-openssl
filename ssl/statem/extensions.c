@@ -1,4 +1,8 @@
 /*
+ * Modifications Copyright 2023 Fondazione LINKS
+ */
+
+/*
  * Copyright 2016-2023 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
@@ -18,7 +22,7 @@
 #include "../ssl_local.h"
 #include "statem_local.h"
 #include "internal/cryptlib.h"
-#include <ssl/statem/statem_local_did.h>
+#include <ssl/statem/statem_local_ssi.h>
 
 static int final_renegotiate(SSL *s, unsigned int context, int sent);
 static int init_server_name(SSL *s, unsigned int context);

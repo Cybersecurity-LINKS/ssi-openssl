@@ -1,14 +1,16 @@
 /*
- * supported_dids.c
+ * Copyright 2023 Fondazione Links. All Rights Reserved.
  *
- *  Created on: Jun 8, 2022
- *      Author: leonardo
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
+ * this file except in compliance with the License.  You can obtain a copy
+ * in the file LICENSE in the source distribution or at
+ * https://www.openssl.org/source/license.html
  */
 
 #include <openssl/tls1.h>
 #include <ssl/ssl_local_did.h>
 
-#include "statem_local_did.h"
+#include "statem_local_ssi.h"
 #include <openssl/provider.h>
 #include <openssl/evp_ssi.h>
 #include <openssl/core_names.h>
@@ -1328,8 +1330,6 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
 
-	struct timeval tv1, tv2;
-
 	s->session->peer_did_doc = OPENSSL_zalloc(sizeof(DID_DOC));
 	DID_DOC *diddoc = s->session->peer_did_doc;
 	if (diddoc == NULL)
@@ -1430,8 +1430,6 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 
 	EVP_VC_CTX_free(ctx_vc);
 
-	/* gettimeofday(&tv1, NULL); */
-
 	ctx_vc = EVP_VC_CTX_new(evp_vc);
 	if (ctx_vc == NULL)
 	{
@@ -1489,11 +1487,6 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
-
-	/* gettimeofday(&tv2, NULL);
-	printf("VC verify time = %f seconds\n\n",
-	   (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
-		(double)(tv2.tv_sec - tv1.tv_sec)); */
 
 	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
 	if (evp_did == NULL)
@@ -1655,8 +1648,6 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
 
-	struct timeval tv1, tv2;
-
 	s->statem.enc_read_state = ENC_READ_STATE_VALID;
 
 	if ((!PACKET_get_length_prefixed_1(pkt, &context) || (s->pha_context == NULL && PACKET_remaining(&context) != 0) || (s->pha_context != NULL && !PACKET_equal(&context, s->pha_context, s->pha_context_len))))
@@ -1697,8 +1688,6 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
-
-	/* gettimeofday(&tv1, NULL); */
 
 	evp_did = EVP_DID_fetch(NULL, "OTT", NULL);
 	if (evp_did == NULL)
@@ -1742,11 +1731,6 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;
 	}
-
-	/* gettimeofday(&tv2, NULL);
-    printf("DID resolve time = %f seconds\n\n",
-           (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
-            (double)(tv2.tv_sec - tv1.tv_sec)); */
 
 	diddoc->atContext = OPENSSL_strdup(tmp->atContext);
 	diddoc->id = OPENSSL_strdup(tmp->id);

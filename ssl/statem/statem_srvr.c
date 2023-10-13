@@ -1,4 +1,8 @@
 /*
+ * Modifications Copyright 2023 Fondazione LINKS
+ */
+
+/*
  * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved
  * Copyright 2005 Nokia. All rights reserved.
@@ -28,7 +32,7 @@
 #include <openssl/asn1t.h>
 #include <ssl/ssl_local_did.h>
 #include <ssl/ssl_local_vc.h>
-#include "statem_local_did.h"
+#include "statem_local_ssi.h"
 
 #define TICKET_NONCE_SIZE       8
 
@@ -3553,7 +3557,6 @@ MSG_PROCESS_RETURN tls_process_client_certificate(SSL *s, PACKET *pkt)
     PACKET spkt, context;
     size_t chainidx;
     SSL_SESSION *new_sess = NULL;
-    struct timeval tv1, tv2;
 
     /*
      * To get this far we must have read encrypted data from the client. We no
@@ -3652,12 +3655,7 @@ MSG_PROCESS_RETURN tls_process_client_certificate(SSL *s, PACKET *pkt)
         }
     } else {
         EVP_PKEY *pkey;
-        /* gettimeofday(&tv1, NULL); */
         i = ssl_verify_cert_chain(s, sk);
-        /* gettimeofday(&tv2, NULL);
-        printf("certificate chain verify time = %f seconds\n\n",
-           (double)(tv2.tv_usec - tv1.tv_usec) / 1000000 +
-            (double)(tv2.tv_sec - tv1.tv_sec)); */
         if (i <= 0) {
             SSLfatal(s, ssl_x509err2alert(s->verify_result),
                      SSL_R_CERTIFICATE_VERIFY_FAILED);

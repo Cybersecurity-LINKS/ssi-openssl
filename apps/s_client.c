@@ -1,4 +1,8 @@
 /*
+ * Modifications Copyright 2023 Fondazione LINKS.
+ */
+
+/*
  * Copyright 1995-2023 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright 2005 Nokia. All rights reserved.
  *
@@ -46,7 +50,6 @@ typedef unsigned int u_int;
 #include "s_apps.h"
 #include "timeouts.h"
 #include "internal/sockets.h"
-#include <sys/time.h>
 
 #if defined(__has_feature)
 # if __has_feature(memory_sanitizer)
