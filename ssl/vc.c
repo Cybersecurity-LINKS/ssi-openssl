@@ -176,7 +176,7 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 
 	ctx->trusted_issuers_num = 1;
 	
-	ctx->ext.peer_ssiauth = VC_AUTHN;
+	ctx->ext.ssi_params.ssiauth = VC_AUTHN;
 
 	return 1;
 }
@@ -264,7 +264,9 @@ VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 int send_ssi_request(SSL *s) {
 	if (
 	/* don't request did unless asked for it: */
-	s->verify_mode & SSL_VERIFY_PEER && s->ext.didmethods != NULL
+	s->verify_mode & SSL_VERIFY_PEER && 
+	(s->ext.ssi_params.ssiauth == DID_AUTHN || s->ext.ssi_params.ssiauth == VC_AUTHN) && 
+	s->ext.ssi_params.didmethods != NULL 
 //			/*
 //			 * don't request if post-handshake-only unless doing
 //			 * post-handshake in TLSv1.3:

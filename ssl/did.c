@@ -55,23 +55,24 @@ int SSL_CTX_set_did_methods(SSL_CTX *ctx, const char *did_methods){
 	if(!size)
 		return 0;
 
-	ctx->ext.didmethods = OPENSSL_malloc(sizeof(uint8_t) * size);
+	ctx->ext.ssi_params.didmethods = OPENSSL_malloc(sizeof(uint8_t) * size);
 
-	if (ctx->ext.didmethods == NULL) {
+	if (ctx->ext.ssi_params.didmethods == NULL) {
 		ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 
-	memcpy(ctx->ext.didmethods, supported_did_methods,
+	memcpy(ctx->ext.ssi_params.didmethods, supported_did_methods,
 				size * sizeof(uint8_t));
-	ctx->ext.didmethods_len = size;
+	ctx->ext.ssi_params.didmethods_len = size;
 
-	ctx->ext.peer_ssiauth = DID_AUTHN;
+	ctx->ext.ssi_params.ssiauth = DID_AUTHN;
 
 	return 1;
 }
 
-static int tls13_shared_didmethods(SSL *s, uint8_t **shmethods,
+static int 
+tls13_shared_didmethods(SSL *s, uint8_t **shmethods,
                                    const uint8_t *pref, size_t preflen,
                                    const uint8_t *allow, size_t allowlen){
 
@@ -92,7 +93,7 @@ static int tls13_shared_didmethods(SSL *s, uint8_t **shmethods,
 	return nmatch;
 }
 
-static int tls13_set_shared_didmethods(SSL *s){
+int tls13_set_shared_didmethods(SSL *s){
 
 	uint8_t **shmethods = NULL;
 	size_t nmatch, preflen, allowlen;
@@ -102,10 +103,10 @@ static int tls13_set_shared_didmethods(SSL *s){
 	s->shared_didmethods = NULL;
 	s->shared_didmethodslen = 0;
 
-	pref = s->ext.peer_didmethods;
-	preflen = s->ext.peer_didmethods_len;
-	allow = s->ext.didmethods;
-	allowlen = s->ext.didmethods_len;
+	pref = s->ext.peer_ssi_params.didmethods;
+	preflen = s->ext.peer_ssi_params.didmethods_len;
+	allow = s->ext.ssi_params.didmethods;
+	allowlen = s->ext.ssi_params.didmethods_len;
 
 	nmatch = tls13_shared_didmethods(s, NULL, pref, preflen, allow, allowlen);
 	if(nmatch){
@@ -124,16 +125,16 @@ static int tls13_set_shared_didmethods(SSL *s){
 }
 
 /* Check if our DID is compatible with one of the DID methods sent by the peer */
-static int is_did_method_supported(SSL *s) {
+static int is_did_supported_by_peer(SSL *s) {
 
 	size_t i, j;
 	const DIDMETHOD_LOOKUP *lu;
 
-	for (i = 0; i < s->ext.peer_didmethods_len; i++) {
+	for (i = 0; i < s->ext.peer_ssi_params.didmethods_len; i++) {
 		for (j = 0, lu = didmethods_lookup_tbl;
 				j < OSSL_NELEM(didmethods_lookup_tbl); j++, lu++) {
-			if (s->ext.peer_didmethods[i] == lu->didmethod)
-				if (s->did->key->did_method == s->ext.peer_didmethods[i])
+			if (s->ext.peer_ssi_params.didmethods[i] == lu->didmethod)
+				if (s->did->key->did_method == s->ext.peer_ssi_params.didmethods[i])
 						return 1;
 		}
 	}
@@ -141,23 +142,21 @@ static int is_did_method_supported(SSL *s) {
 	return 0;
 }
 
-int tls13_set_server_did_methods(SSL *s) {
+int tls13_set_server_auth_method(SSL *s) {
 
-	if(s->ext.peer_didmethods == NULL) {
-		/* the client did not send the supported did methods extension */
-		s->s3.auth_method = CERTIFICATE_AUTHN;
-		return 1;
-	} else if (is_did_method_supported(s)){
-		/* The server has a DID compatible with the client's DID methods */
-		/* s->s3.auth_method = s->ext.ssi_authn; */ 
-		if(s->ext.didmethods != NULL)
-			/* if the server has supported did methods to send set the ones in common with the client */
-			if(!tls13_set_shared_didmethods(s))
-				return 0;
-		return 1;
+	if(s->s3.ssi_params_received) {
+		if(s->did->key->did != NULL && s->did->key->did != 0 && is_did_supported_by_peer(s)) {
+			if(s->ext.peer_ssi_params.ssiauth == VC_AUTHN) {
+				if(s->vc != NULL)
+					s->s3.auth_method = VC_AUTHN;
+			}
+			else
+				s->s3.auth_method = DID_AUTHN; 
+		} else {
+			s->s3.auth_method = CERTIFICATE_AUTHN;
+		}
 	} else {
-		SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_INVALID_DID);
-		return 0;
+		s->s3.auth_method = CERTIFICATE_AUTHN;
 	}
 }
 
@@ -451,7 +450,7 @@ static int ssl_set_did_pkey(DID *d, EVP_PKEY *pkey, char *did) {
 
 int tls1_process_did_methods(SSL *s) {
 
-	if (!is_did_method_supported(s))
+	if (!is_did_supported_by_peer(s))
 		return 0;
 
 	return 1;
@@ -469,6 +468,7 @@ int SSL_CTX_use_did_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, char *did) {
 		ERR_raise(ERR_LIB_SSL, ERR_R_PASSED_NULL_PARAMETER);
 		return 0;
 	}
+	
 	return ssl_set_did_pkey(ctx->did, pkey, did);
 }
 
@@ -487,6 +487,6 @@ int is_did_handshake(const SSL *s){
 	if(s == NULL || !SSL_IS_TLS13(s))
 		return 0;
 
-	return s->s3.ssi_params_sent;
+	return s->s3.ssi_params_sent && s->session->peer_did_doc;
 }
 

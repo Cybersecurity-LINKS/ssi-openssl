@@ -134,7 +134,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
                 st->hand_state = TLS_ST_CR_CERT_REQ;
                 return 1;
             }
-            if (!s->s3.ssi_params_sent && mt == SSL3_MT_CERTIFICATE) {
+            if (/* !s->s3.ssi_params_sent &&  */mt == SSL3_MT_CERTIFICATE) {
                 st->hand_state = TLS_ST_CR_CERT;
                 return 1;
             }
@@ -143,12 +143,12 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
 				return 1;
 			}
 
-            if (s->s3.ssi_params_sent && mt == SSL3_MT_DID) {
+            if (s->s3.ssi_params_sent && s->ext.ssi_params.ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
 				st->hand_state = TLS_ST_CR_DID;
 				return 1;
 			}
 
-			if (s->s3.ssi_params_sent && mt == SSL3_MT_VC) {
+			if (s->s3.ssi_params_sent && s->ext.ssi_params.ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
 				st->hand_state = TLS_ST_CR_VC;
 				return 1;
 			}
@@ -156,32 +156,32 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         break;
 
     case TLS_ST_CR_CERT_REQ:
-        if (!s->s3.ssi_params_sent && mt == SSL3_MT_CERTIFICATE) {
+        if (/* !s->s3.ssi_params_sent && */ mt == SSL3_MT_CERTIFICATE) {
             st->hand_state = TLS_ST_CR_CERT;
             return 1;
         }
-		if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
+		if (s->s3.ssi_params_sent && s->ext.ssi_params.ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
 			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
 
-        if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
+        if (s->s3.ssi_params_sent && s->ext.ssi_params.ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
             st->hand_state = TLS_ST_CR_DID;
             return 1;
         }
         break;
 
     case TLS_ST_CR_SSI_REQ:
-    	if (!s->s3.ssi_params_sent && mt == SSL3_MT_CERTIFICATE){
+    	if (/* !s->s3.ssi_params_sent && */ mt == SSL3_MT_CERTIFICATE){
     		st->hand_state = TLS_ST_CR_CERT;
     		return 1;
     	}
-		if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
+		if (s->s3.ssi_params_sent && s->ext.ssi_params.ssiauth == VC_AUTHN && mt == SSL3_MT_VC) {
 			st->hand_state = TLS_ST_CR_VC;
 			return 1;
 		}
 
-        if (s->s3.ssi_params_sent && s->ext.peer_ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
+        if (s->s3.ssi_params_sent && s->ext.ssi_params.ssiauth == DID_AUTHN && mt == SSL3_MT_DID) {
             st->hand_state = TLS_ST_CR_DID;
             return 1;
         }
@@ -195,14 +195,8 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         break;
 
     case TLS_ST_CR_VC:
-		if (mt == SSL3_MT_DID_VERIFY) {
-			st->hand_state = TLS_ST_CR_DID_VRFY;
-			return 1;
-		}
-		break;
-
-    case TLS_ST_CR_DID:
-		if (mt == SSL3_MT_DID_VERIFY) {
+	case TLS_ST_CR_DID:
+    	if (mt == SSL3_MT_DID_VERIFY) {
 			st->hand_state = TLS_ST_CR_DID_VRFY;
 			return 1;
 		}

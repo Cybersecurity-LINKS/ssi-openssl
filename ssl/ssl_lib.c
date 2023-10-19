@@ -807,19 +807,19 @@ SSL *SSL_new(SSL_CTX *ctx)
         }
         s->ext.supportedgroups_len = ctx->ext.supportedgroups_len;
     }
-	if (ctx->ext.didmethods) {
-		s->ext.didmethods = OPENSSL_memdup(
-				ctx->ext.didmethods,
-				ctx->ext.didmethods_len
-						* sizeof(*ctx->ext.didmethods));
-		if (!s->ext.didmethods) {
-			s->ext.didmethods_len = 0;
+	if (ctx->ext.ssi_params.didmethods) {
+		s->ext.ssi_params.didmethods = OPENSSL_memdup(
+				ctx->ext.ssi_params.didmethods,
+				ctx->ext.ssi_params.didmethods_len
+						* sizeof(*ctx->ext.ssi_params.didmethods));
+		if (!s->ext.ssi_params.didmethods) {
+			s->ext.ssi_params.didmethods_len = 0;
 			goto err;
 		}
-		s->ext.didmethods_len = ctx->ext.didmethods_len;
+		s->ext.ssi_params.didmethods_len = ctx->ext.ssi_params.didmethods_len;
 	}
 
-    s->ext.peer_ssiauth = ctx->ext.peer_ssiauth;
+    s->ext.ssi_params.ssiauth = ctx->ext.ssi_params.ssiauth;
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
     s->ext.npn = NULL;

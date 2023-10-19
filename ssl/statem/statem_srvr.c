@@ -515,11 +515,9 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s)
     case TLS_ST_SW_ENCRYPTED_EXTENSIONS:
         if (s->hit)
             st->hand_state = TLS_ST_SW_FINISHED;
-		/* else if (s->s3.auth_method == s->ext.peer_ssiauth && send_ssi_request(s))
-		 	 st->hand_state = TLS_ST_SW_SSI_REQ; */
-        else if ((s->ext.peer_ssiauth == DID_AUTHN || s->ext.peer_ssiauth == VC_AUTHN) && send_ssi_request(s))
+        else if (s->s3.ssi_params_received && send_ssi_request(s))
 		 	 st->hand_state = TLS_ST_SW_SSI_REQ;
-		else if (s->ext.peer_ssiauth != DID_AUTHN && s->ext.peer_ssiauth != VC_AUTHN && send_certificate_request(s))
+		else if (send_certificate_request(s))
 		 	 st->hand_state = TLS_ST_SW_CERT_REQ;
 		else if (s->s3.auth_method == CERTIFICATE_AUTHN)
 			st->hand_state = TLS_ST_SW_CERT;
@@ -2158,16 +2156,19 @@ static int tls_early_post_process_client_hello(SSL *s)
         }
 
 		if (SSL_IS_TLS13(s)) {
-			if(!tls13_set_server_did_methods(s)){
+			if(!tls13_set_server_auth_method(s)){
 				/*SSLfatal() already called*/
 				goto err;
 			}
-            if((s->s3.auth_method == VC_AUTHN || s->s3.auth_method == DID_AUTHN) && send_ssi_request(s))
-                if(s->s3.auth_method != s->ext.peer_ssiauth)
+
+            if((s->s3.auth_method == VC_AUTHN || s->s3.auth_method == DID_AUTHN) && send_ssi_request(s)) {
+                if(s->s3.auth_method != s->ext.peer_ssi_params.ssiauth || !tls13_set_shared_didmethods(s)) {
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     goto err;
-            } /* else
-			s->s3.auth_method = CERTIFICATE_AUTHN; */
-    }
+                }    
+            }   
+        }
+    }      
 
     sk_SSL_CIPHER_free(ciphers);
     sk_SSL_CIPHER_free(scsvs);

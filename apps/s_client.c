@@ -475,6 +475,7 @@ typedef enum OPTION_choice {
     OPT_SCTP_LABEL_BUG,
     OPT_R_ENUM, OPT_PROV_ENUM,
 	OPT_DID,
+    OPT_DID_KEY,
 	OPT_DID_METHODS,
 	OPT_VC,
 	OPT_VCIFILE
@@ -700,8 +701,9 @@ const OPTIONS s_client_options[] = {
     OPT_PROV_OPTIONS,
     OPT_PARAMETERS(),
     {"host:port", 0, 0, "Where to connect; same as -connect option"},
-	{ "did", OPT_DID, 's',
+    { "did", OPT_DID, 's',
 			"client DID to send to the server" },
+    { "did_key", OPT_DID_KEY, 's', "DID Private key file to use" },
 	{ "did_methods", OPT_DID_METHODS, 's',
 			"list of DID methods supported by the client (comma-separated list)" },
 	{ "vc", OPT_VC, 's', "File that contains client's VC"},
@@ -915,7 +917,7 @@ int s_client_main(int argc, char **argv)
 # endif
 #endif
 
-    char *did = NULL;
+    char *did = NULL, *did_key_file = NULL;
     const char *did_methods = NULL;
 
     char *vc_file = NULL;
@@ -1488,6 +1490,9 @@ int s_client_main(int argc, char **argv)
 		case OPT_DID:
 			did = opt_arg();
 			break;
+        case OPT_DID_KEY:
+            did_key_file = opt_arg();
+            break;
 		case OPT_DID_METHODS:
 			did_methods = opt_arg();
 			break;
@@ -1675,7 +1680,7 @@ int s_client_main(int argc, char **argv)
     }
 
     if (did)
-		did_pkey = load_key(key_file, 0, 0, NULL,
+		did_pkey = load_key(did_key_file, 0, 0, NULL,
 				NULL, "client did private key");
 
 

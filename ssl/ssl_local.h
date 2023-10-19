@@ -853,6 +853,12 @@ typedef struct tls_group_info_st {
 
 # define TLS_GROUP_FFDHE_FOR_TLS1_3 (TLS_GROUP_FFDHE|TLS_GROUP_ONLY_FOR_TLS1_3)
 
+typedef struct ssi_params_st {
+    size_t didmethods_len;
+    uint8_t *didmethods;
+    uint8_t ssiauth;
+} SSI_PARAMS;
+
 struct ssl_ctx_st {
     OSSL_LIB_CTX *libctx;
 
@@ -1090,11 +1096,8 @@ struct ssl_ctx_st {
         uint16_t *supported_groups_default;
         size_t supported_groups_default_len;
 
-        size_t didmethods_len;
-        /* our list */
-        uint8_t *didmethods;
+        SSI_PARAMS ssi_params;
 
-        uint8_t peer_ssiauth;
         /*
          * ALPN information (we are in the process of transitioning from NPN to
          * ALPN.)
@@ -1455,8 +1458,10 @@ struct ssl_st {
         size_t alpn_proposed_len;
         /* used by the client to know if it actually sent alpn */
         int alpn_sent;
-        /* used by client to know if it actually sent DID methods*/
+        /* used by client to know if it actually sent ssi params extension*/
         int ssi_params_sent;
+        /* used by server to know if client supports SSI handshake*/
+        int ssi_params_received;
 
         /*
          * This is set to true if we believe that this is a version of Safari
@@ -1680,15 +1685,8 @@ struct ssl_st {
          /* peer's list */
         uint16_t *peer_supportedgroups;
 
-		size_t didmethods_len;
-		/* our list */
-		uint8_t *didmethods;
-
-        uint8_t peer_ssiauth;
-
-		size_t peer_didmethods_len;
-		/* peer's list */
-		uint8_t *peer_didmethods;
+		SSI_PARAMS ssi_params;
+        SSI_PARAMS peer_ssi_params;
 
         /* TLS Session Ticket extension override */
         TLS_SESSION_TICKET_EXT *session_ticket;

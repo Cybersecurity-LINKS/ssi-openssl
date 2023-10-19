@@ -17,11 +17,11 @@
 
 int init_ssi_params(SSL *s, unsigned int context)
 {
-
+	s->ext.peer_ssi_params.ssiauth = 0;
 	/* Clear any supported did method received */
-	OPENSSL_free(s->ext.peer_didmethods);
-	s->ext.peer_didmethods = NULL;
-	s->ext.peer_didmethods_len = 0;
+	OPENSSL_free(s->ext.peer_ssi_params.didmethods);
+	s->ext.peer_ssi_params.didmethods = NULL;
+	s->ext.peer_ssi_params.didmethods_len = 0;
 
 	return 1;
 }
@@ -371,16 +371,29 @@ EXT_RETURN tls_construct_ctos_ssi_params(SSL *s, WPACKET *pkt,
 
 	s->s3.ssi_params_sent = 0;
 
-	if (s->ext.didmethods == NULL || s->ext.didmethods_len == 0)
+	if(s->did->key->did == NULL && s->did->key->did_len == 0 && 
+	(s->ext.ssi_params.ssiauth != VC_AUTHN && s->ext.ssi_params.ssiauth != DID_AUTHN 
+	|| s->ext.ssi_params.didmethods == NULL))
 		return EXT_RETURN_NOT_SENT;
 
+	/* if(s->ext.ssi_params.ssiauth == 0)
+		return EXT_RETURN_NOT_SENT; */
+
+	/* if (s->ext.ssi_params.didmethods == NULL || s->ext.peer_ssi_params.didmethods == 0)
+		return EXT_RETURN_NOT_SENT; */
+
 	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_ssi_params)
-		/* Sub-packet for supported_dids extension */
+		/* Sub-packet for ssi params extension */
 		|| !WPACKET_start_sub_packet_u16(pkt)
 		/* peer SSI authentication method */
-		|| !WPACKET_put_bytes_u8(pkt, s->ext.peer_ssiauth)
+		|| !WPACKET_put_bytes_u8(pkt, s->ext.ssi_params.ssiauth)
 		/* Sub-packet for the actual list */
-		|| !WPACKET_sub_memcpy_u8(pkt, s->ext.didmethods, s->ext.didmethods_len) || !WPACKET_close(pkt))
+		|| !WPACKET_start_sub_packet_u8(pkt)
+		|| (/*s->ext.ssi_params.didmethods_len != 0 &&*/ !WPACKET_memcpy(pkt, s->ext.ssi_params.didmethods,
+				s->ext.ssi_params.didmethods_len))
+		/*|| !WPACKET_sub_memcpy_u8(pkt, s->ext.ssi_params.didmethods, s->ext.ssi_params.didmethods_len)*/
+		|| !WPACKET_close(pkt)
+		|| !WPACKET_close(pkt))
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return EXT_RETURN_FAIL;
@@ -399,7 +412,7 @@ int tls_parse_stoc_ssi_params(SSL *s, PACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET did_methods;
 
-	if (!PACKET_get_1(pkt, &s->s3.auth_method) ||
+	if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
 		!PACKET_as_length_prefixed_1(pkt, &did_methods) || PACKET_remaining(&did_methods) == 0)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
@@ -407,8 +420,8 @@ int tls_parse_stoc_ssi_params(SSL *s, PACKET *pkt,
 	}
 
 	if (!s->hit && !PACKET_memdup(&did_methods,
-								  &s->ext.peer_didmethods,
-								  &s->ext.peer_didmethods_len))
+								  &s->ext.peer_ssi_params.didmethods,
+								  &s->ext.peer_ssi_params.didmethods_len))
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
@@ -467,7 +480,11 @@ MSG_PROCESS_RETURN tls_process_ssi_request(SSL *s, PACKET *pkt)
 
 	OPENSSL_free(rawexts);
 
-	if (s->s3.ssi_params_sent && s->s3.auth_method != s->ext.peer_ssiauth)
+	s->s3.auth_method = s->ext.peer_ssi_params.ssiauth;
+
+	if (s->s3.ssi_params_sent &&
+			(s->ext.ssi_params.ssiauth == VC_AUTHN || s->ext.ssi_params.ssiauth == DID_AUTHN) &&
+			s->s3.auth_method != s->ext.ssi_params.ssiauth)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
@@ -1141,20 +1158,31 @@ int tls_parse_ctos_ssi_params(SSL *s, PACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET did_methods;
 
-	if (!PACKET_get_1(pkt, &s->s3.auth_method) ||
-		!PACKET_as_length_prefixed_1(pkt, &did_methods) || PACKET_remaining(&did_methods) == 0)
+	if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
+		!PACKET_as_length_prefixed_1(pkt, &did_methods) || (s->ext.peer_ssi_params.ssiauth == 0 && PACKET_remaining(&did_methods) != 0)
+		/*|| PACKET_remaining(&did_methods) == 0*/)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
 	}
 
+	/*if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
+			!PACKET_copy_bytes(pkt, s->ext.peer_ssi_params.didmethods, s->ext.peer_ssi_params.didmethods_len) ||
+			PACKET_remaining(pkt) != 0)
+		{
+			SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
+			return 0;
+		}*/
+
 	if (!s->hit && !PACKET_memdup(&did_methods,
-								  &s->ext.peer_didmethods,
-								  &s->ext.peer_didmethods_len))
+								  &s->ext.peer_ssi_params.didmethods,
+								  &s->ext.peer_ssi_params.didmethods_len))
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 	}
+
+	s->s3.ssi_params_received = 1;
 
 #endif
 
@@ -1166,7 +1194,7 @@ EXT_RETURN tls_construct_stoc_ssi_params(SSL *s, WPACKET *pkt,
 {
 #ifndef OPENSSL_NO_TLS1_3
 
-	if (s->ext.didmethods == NULL || s->ext.didmethods_len == 0)
+	if (s->ext.ssi_params.didmethods == NULL || s->ext.ssi_params.didmethods_len == 0)
 		return EXT_RETURN_NOT_SENT;
 
 	uint8_t *didmethods;
@@ -1181,15 +1209,15 @@ EXT_RETURN tls_construct_stoc_ssi_params(SSL *s, WPACKET *pkt,
 	}
 	else
 	{
-		didmethods = s->ext.didmethods;
-		didmethodslen = s->ext.didmethods_len;
+		didmethods = s->ext.ssi_params.didmethods;
+		didmethodslen = s->ext.ssi_params.didmethods_len;
 	}
 
 	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_ssi_params)
 		/* Sub-packet for did methods extension */
 		|| !WPACKET_start_sub_packet_u16(pkt)
 		/* peer SSI authentication method */
-		|| !WPACKET_put_bytes_u8(pkt, s->ext.peer_ssiauth)
+		|| !WPACKET_put_bytes_u8(pkt, s->ext.ssi_params.ssiauth)
 		/* Sub-packet for the actual list */
 		|| !WPACKET_sub_memcpy_u8(pkt, didmethods, didmethodslen) || !WPACKET_close(pkt))
 	{

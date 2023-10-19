@@ -730,6 +730,7 @@ typedef enum OPTION_choice {
     OPT_X_ENUM,
     OPT_PROV_ENUM,
 	OPT_DID,
+    OPT_DID_KEY,
 	OPT_DID_METHODS,
 	OPT_VC,
 	OPT_VCIFILE
@@ -973,6 +974,7 @@ const OPTIONS s_server_options[] = {
 #endif
 	{ "did", OPT_DID, 's',
 			"Set the server did to send to the client" },
+    { "did_key", OPT_DID_KEY, 's', "DID Private key file to use" },
 	{ "did_methods", OPT_DID_METHODS, 's',
 			"list of did methods supported by the server (comma-separated list)" },
 	{ "vc", OPT_VC, 's', "server's VC"},
@@ -1070,7 +1072,7 @@ int s_server_main(int argc, char *argv[])
     int sctp_label_bug = 0;
 #endif
     int ignore_unexpected_eof = 0;
-    char *did = NULL;
+    char *did = NULL, *s_did_key_file = NULL;
     const char *did_methods = NULL;
 
     char *vc_file = NULL;
@@ -1669,6 +1671,9 @@ int s_server_main(int argc, char *argv[])
 		case OPT_DID:
 			did = opt_arg();
 			break;
+        case OPT_DID_KEY:
+            s_did_key_file = opt_arg();
+            break;
 		case OPT_DID_METHODS:
 			did_methods = opt_arg();
 			break;
@@ -1789,7 +1794,7 @@ int s_server_main(int argc, char *argv[])
     }
 
     if (did)
-		did_pkey = load_key(s_key_file, 0, 0, NULL,
+		did_pkey = load_key(s_did_key_file, 0, 0, NULL,
 		NULL, "server did private key");
 
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
