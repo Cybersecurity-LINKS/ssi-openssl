@@ -739,7 +739,7 @@ SSL *SSL_new(SSL_CTX *ctx)
 	if(s->vc == NULL)
 		goto err;
 
-	s->trusted_issuers	 = ssl_vc_issuers_dup(ctx->trusted_issuers, ctx->trusted_issuers_num);
+	s->trusted_issuers = ssl_vc_issuers_dup(ctx->trusted_issuers, ctx->trusted_issuers_num);
 	s->trusted_issuers_num = ctx->trusted_issuers_num;
 
     RECORD_LAYER_set_read_ahead(&s->rlayer, ctx->read_ahead);

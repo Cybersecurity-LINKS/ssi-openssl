@@ -3,8 +3,7 @@
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
+ * at http://www.apache.org/licenses/LICENSE-2.0
  */
 
 #include <openssl/evp_ssi.h>
@@ -26,7 +25,6 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 	size_t params_n = 0;
 
 	FILE *vc_fp = NULL;
-	/*OSSL_PROVIDER *provider = NULL;*/
 
 	size_t n = 0;
 	int c;
@@ -50,8 +48,6 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 	while ((c = fgetc(vc_fp)) != EOF) {
 		vc_stream[n++] = (unsigned char)c;
 	}
-
-	/* printf("%s\n", vc_stream); */
 
 	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
 	if (evp_vc == NULL)
@@ -118,25 +114,6 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 	if (vc_issuers_fp == NULL)
 		return 0;
 
-	/* fscanf(vc_issuers_fp, "%d", &n);
-
-	 trusted_issuers = (VC_ISSUER *)malloc(n * sizeof(VC_ISSUER));
-
-	for (i = 0; i < n; i++) {
-		position = ftell(vc_issuers_fp);
-		while (fgetc(vc_issuers_fp) != '\n') {
-			j++;
-		}
-		trusted_issuers[i].verificationMethod = (char*) malloc(j);
-		j = 0;
-		fseek(vc_issuers_fp, position, SEEK_SET);
-		fgets(trusted_issuers[i].verificationMethod,
-				sizeof(trusted_issuers[i].verificationMethod), vc_issuers_fp)
-		);
-		position = ftell(vc_issuers_fp);
-
-	}*/
-
 	ctx->trusted_issuers = (VC_ISSUER*) malloc(sizeof(VC_ISSUER));
 	if(ctx->trusted_issuers == NULL) {
 		ERR_raise(ERR_LIB_SSL, ERR_R_INIT_FAIL);
@@ -144,10 +121,6 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 	}
 
 	ctx->trusted_issuers->verificationMethod = OPENSSL_zalloc(100);
-	/* if( fgets (ctx->trusted_issuers->verificationMethod, 100, vc_issuers_fp) == NULL ) {
-        ERR_raise(ERR_LIB_SSL, ERR_R_INIT_FAIL);
-		return 0;
-    } */
 	while((c = fgetc(vc_issuers_fp)) != '\n'){
 		ctx->trusted_issuers->verificationMethod[n++] = c;
 	}
@@ -156,9 +129,6 @@ int SSL_CTX_set_vc_issuers(SSL_CTX *ctx, char* vc_issuers_file) {
 	fseek(vc_issuers_fp, strlen(ctx->trusted_issuers->verificationMethod), SEEK_SET);
 	pubkey = malloc(f_size + 1);
 
-	/* while ((c = fgetc(vc_issuers_fp)) != EOF) {
-		pubkey[n++] = c;
-	} */
 
 	for (n = 0; n < f_size; n++) {
 		pubkey[n] = fgetc(vc_issuers_fp);
@@ -233,19 +203,12 @@ VC* ssl_vc_dup(VC *vc) {
 
 VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 
-	//int i;
 	VC_ISSUER *ret = OPENSSL_zalloc(issuers_num * sizeof(VC_ISSUER));
 
 	if (ret == NULL) {
 		ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
-
-	//for(i = 0; i < issuers_num; i++){
-	//	ret[i].pubkey = issuers[i].pubkey;
-	//	EVP_PKEY_up_ref(issuers[i].pubkey);
-		/*ret[i].verificationMethod = OPENSSL_memdup(issuers[i].verificationMethod, strlen(issuers[i].verificationMethod));*/
-	//}
 
 	ret->pubkey = issuers->pubkey;
 	ret->verificationMethod = issuers->verificationMethod;
@@ -254,7 +217,7 @@ VC_ISSUER* ssl_vc_issuers_dup(VC_ISSUER *issuers, size_t issuers_num) {
 }
 
 /*
- * Should we send a VcRequest message?
+ * Should we send an SSIRequest message?
  *
  * Valid return values are:
  *   1: Yes

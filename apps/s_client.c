@@ -1964,12 +1964,12 @@ int s_client_main(int argc, char **argv)
     }
 
 	if (did) {
-		if (/* vc_file == NULL || */ !set_did_key_stuff(ctx, did_pkey, did))
+		if (!set_did_key_stuff(ctx, did_pkey, did))
 			goto end;
 	}
 
     if (did_methods) {
-		if (/* vc_issuers_file == NULL || */ !SSL_CTX_set_did_methods(ctx, did_methods)) {
+		if (!SSL_CTX_set_did_methods(ctx, did_methods)) {
 			BIO_printf(bio_err, "Error setting did_methods\n");
 			goto end;
 		}

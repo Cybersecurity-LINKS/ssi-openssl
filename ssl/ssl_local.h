@@ -595,12 +595,11 @@ struct ssl_session_st {
     X509 *peer;
     /* Certificate chain peer sent. */
     STACK_OF(X509) *peer_chain;
-	/* This is the public key of the DID document of the other end */
+	/* This is the DID document of the other end */
 	DID_DOC *peer_did_doc;
-	/* This the peer's VC */
+	/* This the VC of the other end */
 	VC *peer_vc;
-	/* peer serialized VC */
-	/* unsigned char *peer_vc_stream; */
+	
 	/*
      * when app_verify_callback accepts a session where the peer's
      * certificate is not ok, we must remember the error for session reuse:
@@ -1351,7 +1350,7 @@ struct ssl_st {
             EVP_PKEY *pkey;         /* holds short lived key exchange key */
             /* used for certificate requests */
             int cert_req;
-            /* used for vc_requests */
+            /* used for ssi requests */
             int ssi_req;
             /* Certificate types in certificate request message. */
             uint8_t *ctype;
@@ -1460,7 +1459,7 @@ struct ssl_st {
         int alpn_sent;
         /* used by client to know if it actually sent ssi params extension*/
         int ssi_params_sent;
-        /* used by server to know if client supports SSI handshake*/
+        /* used by server to know if client supports SSI */
         int ssi_params_received;
 
         /*

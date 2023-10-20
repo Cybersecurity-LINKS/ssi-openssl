@@ -172,7 +172,7 @@ static int ossl_statem_client13_read_transition(SSL *s, int mt)
         break;
 
     case TLS_ST_CR_SSI_REQ:
-    	if (/* !s->s3.ssi_params_sent && */ mt == SSL3_MT_CERTIFICATE){
+    	if (mt == SSL3_MT_CERTIFICATE){
     		st->hand_state = TLS_ST_CR_CERT;
     		return 1;
     	}

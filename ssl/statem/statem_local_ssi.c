@@ -3,8 +3,7 @@
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
+ * at http://www.apache.org/licenses/LICENSE-2.0
  */
 
 #include <openssl/tls1.h>
@@ -18,7 +17,8 @@
 int init_ssi_params(SSL *s, unsigned int context)
 {
 	s->ext.peer_ssi_params.ssiauth = 0;
-	/* Clear any supported did method received */
+
+	/* Clear any did method received */
 	OPENSSL_free(s->ext.peer_ssi_params.didmethods);
 	s->ext.peer_ssi_params.didmethods = NULL;
 	s->ext.peer_ssi_params.didmethods_len = 0;
@@ -191,7 +191,6 @@ err:
 
 MSG_PROCESS_RETURN tls_process_did_verify(SSL *s, PACKET *pkt)
 {
-	/*EVP_PKEY *pkey = NULL;*/
 	const unsigned char *data;
 #ifndef OPENSSL_NO_GOST
 	unsigned char *gost_data = NULL;
@@ -199,7 +198,7 @@ MSG_PROCESS_RETURN tls_process_did_verify(SSL *s, PACKET *pkt)
 	MSG_PROCESS_RETURN ret = MSG_PROCESS_ERROR;
 	int j;
 	unsigned int len;
-	EVP_PKEY *pkey; /* peer public key */
+	EVP_PKEY *pkey = NULL; /* peer public key */
 	const EVP_MD *md = NULL;
 	size_t hdatalen = 0;
 	void *hdata;
@@ -376,22 +375,16 @@ EXT_RETURN tls_construct_ctos_ssi_params(SSL *s, WPACKET *pkt,
 	|| s->ext.ssi_params.didmethods == NULL))
 		return EXT_RETURN_NOT_SENT;
 
-	/* if(s->ext.ssi_params.ssiauth == 0)
-		return EXT_RETURN_NOT_SENT; */
-
-	/* if (s->ext.ssi_params.didmethods == NULL || s->ext.peer_ssi_params.didmethods == 0)
-		return EXT_RETURN_NOT_SENT; */
 
 	if (!WPACKET_put_bytes_u16(pkt, TLSEXT_TYPE_ssi_params)
 		/* Sub-packet for ssi params extension */
 		|| !WPACKET_start_sub_packet_u16(pkt)
 		/* peer SSI authentication method */
 		|| !WPACKET_put_bytes_u8(pkt, s->ext.ssi_params.ssiauth)
-		/* Sub-packet for the actual list */
+		/* Sub-packet for the list of DID methods */
 		|| !WPACKET_start_sub_packet_u8(pkt)
 		|| (/*s->ext.ssi_params.didmethods_len != 0 &&*/ !WPACKET_memcpy(pkt, s->ext.ssi_params.didmethods,
 				s->ext.ssi_params.didmethods_len))
-		/*|| !WPACKET_sub_memcpy_u8(pkt, s->ext.ssi_params.didmethods, s->ext.ssi_params.didmethods_len)*/
 		|| !WPACKET_close(pkt)
 		|| !WPACKET_close(pkt))
 	{
@@ -702,11 +695,6 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst)
 	if (s->trusted_issuers == NULL)
 		goto err;
 
-	/*for(p = s->trusted_issuers, i = 0; i < s->trusted_issuers_num; i++, p++){
-		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
-			issuer_pubkey = p->pubkey;
-	}*/
-
 	if(strcmp(s->trusted_issuers->verificationMethod, vc->verificationMethod) != 0){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
@@ -861,8 +849,6 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt)
 	EVP_VC *evp_vc = NULL;
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
-
-	// OSSL_PROVIDER *provider = NULL;
 
 	if (vc == NULL)
 	{
@@ -1159,20 +1145,11 @@ int tls_parse_ctos_ssi_params(SSL *s, PACKET *pkt,
 	PACKET did_methods;
 
 	if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
-		!PACKET_as_length_prefixed_1(pkt, &did_methods) || (s->ext.peer_ssi_params.ssiauth == 0 && PACKET_remaining(&did_methods) != 0)
-		/*|| PACKET_remaining(&did_methods) == 0*/)
+		!PACKET_as_length_prefixed_1(pkt, &did_methods) || (s->ext.peer_ssi_params.ssiauth == 0 && PACKET_remaining(&did_methods) != 0))
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
 	}
-
-	/*if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
-			!PACKET_copy_bytes(pkt, s->ext.peer_ssi_params.didmethods, s->ext.peer_ssi_params.didmethods_len) ||
-			PACKET_remaining(pkt) != 0)
-		{
-			SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
-			return 0;
-		}*/
 
 	if (!s->hit && !PACKET_memdup(&did_methods,
 								  &s->ext.peer_ssi_params.didmethods,
@@ -1264,21 +1241,12 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt)
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 
-	// OSSL_PROVIDER *provider = NULL;
-
 	/* 0-length context for server VC message */
 	if (SSL_IS_TLS13(s) && !WPACKET_put_bytes_u8(pkt, 0))
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return 0;
 	}
-
-	/*provider = OSSL_PROVIDER_load(NULL, "ssi");
-	if (provider == NULL) {
-		printf("SSI provider load failed\n");
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-		goto err;
-	}*/
 
 	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
 	if (evp_vc == NULL)
@@ -1467,11 +1435,6 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 
 	if (s->trusted_issuers == NULL)
 		goto err;
-
-	/*for(i = 0, p = s->trusted_issuers; i < s->trusted_issuers_num; i++, p++){
-		if(strcmp(p->verificationMethod, vc->verificationMethod) == 0)
-			issuer_pubkey = p->pubkey;
-	}*/
 
 	if(strcmp(s->trusted_issuers->verificationMethod, vc->verificationMethod) != 0){
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);

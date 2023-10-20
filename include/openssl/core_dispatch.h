@@ -270,7 +270,7 @@ OSSL_CORE_MAKE_FUNC(int, provider_self_test, (void *provctx))
 # define OSSL_OP_DECODER                            21
 # define OSSL_OP_STORE                              22
 # define OSSL_OP_DID                                23
-# define OSSL_OP_VC									24
+# define OSSL_OP_VC				    24
 /* Highest known operation number */
 # define OSSL_OP__HIGHEST                           24
 

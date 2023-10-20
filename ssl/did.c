@@ -3,8 +3,7 @@
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
+ * at http://www.apache.org/licenses/LICENSE-2.0
  */
 
 #include <openssl/ssl.h>
@@ -456,7 +455,7 @@ int tls1_process_did_methods(SSL *s) {
 	return 1;
 }
 
-/* Defined in openssl/include/openssl/ssl.h */
+/* Declared in openssl/include/openssl/ssl.h */
 int SSL_CTX_use_did_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, char *did) {
 
 	if (pkey == NULL) {
