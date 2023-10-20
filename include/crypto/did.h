@@ -27,6 +27,6 @@ struct did_doc_st {
 	char *created;
 	method authentication;
 	method assertion;
-} ;
+} /* DID_DOC */;
 
 #endif /* INCLUDE_CRYPTO_DID_H_ */

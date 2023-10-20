@@ -16,19 +16,6 @@
 # include <openssl/types.h>
 # include "internal/refcount.h"
 
-/* DID */
-
-/*struct did_document_st {
-    //authorization methods
-    unsigned char * sig1;
-    size_t siglen1;
-    int type1;
-    //assertion methods    
-    unsigned char * sig2;
-    size_t siglen2;
-    int type2;
-};*/
-
 struct evp_did_st {
 	OSSL_PROVIDER *prov;
 	int name_id;
@@ -45,7 +32,7 @@ struct evp_did_st {
 	OSSL_FUNC_did_freectx_fn *freectx;
 	OSSL_FUNC_did_set_ctx_params_fn *set_ctx_params;
 	OSSL_FUNC_did_get_ctx_params_fn *get_ctx_params;
-};
+} /* EVP_DID */;
 
 
 struct evp_vc_st {
@@ -64,8 +51,6 @@ struct evp_vc_st {
 	OSSL_FUNC_vc_freectx_fn *freectx;
 	OSSL_FUNC_vc_set_ctx_params_fn *set_ctx_params;
 	OSSL_FUNC_vc_get_ctx_params_fn *get_ctx_params;
-} /* SSI_VC */;
-
-//void a (void);
+} /* EVP_VC */;
 
 #endif

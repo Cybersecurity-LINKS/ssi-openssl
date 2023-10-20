@@ -952,14 +952,14 @@ OSSL_CORE_MAKE_FUNC(int, store_export_object,
   *
   */
 
-#define OSSL_FUNC_DID_NEWCTX						1
+#define OSSL_FUNC_DID_NEWCTX			    1
 #define OSSL_FUNC_DID_CREATE                        2
 #define OSSL_FUNC_DID_RESOLVE                       3
 #define OSSL_FUNC_DID_UPDATE                        4
 #define OSSL_FUNC_DID_REVOKE                        5
 #define OSSL_FUNC_DID_FREECTX                       6
-#define OSSL_FUNC_DID_SET_CTX_PARAMS				7
-#define OSSL_FUNC_DID_GET_CTX_PARAMS				8
+#define OSSL_FUNC_DID_SET_CTX_PARAMS		    7
+#define OSSL_FUNC_DID_GET_CTX_PARAMS		    8
 
 OSSL_CORE_MAKE_FUNC(void *, did_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(char *, did_create, (void *didctx, OSSL_PARAM params[]))
@@ -978,14 +978,14 @@ OSSL_CORE_MAKE_FUNC(int, did_get_ctx_params,
  * Functions to handle verifiable credentials
  */
 
-#define OSSL_FUNC_VC_NEWCTX							1
-#define OSSL_FUNC_VC_CREATE			    			2
+#define OSSL_FUNC_VC_NEWCTX			    1
+#define OSSL_FUNC_VC_CREATE			    2
 #define OSSL_FUNC_VC_VERIFY                         3
-#define OSSL_FUNC_VC_SERIALIZE			    		4
-#define OSSL_FUNC_VC_DESERIALIZE		    		5
-#define OSSL_FUNC_VC_FREECTX						6
-#define OSSL_FUNC_VC_SET_CTX_PARAMS            		7
-#define OSSL_FUNC_VC_GET_CTX_PARAMS            		8
+#define OSSL_FUNC_VC_SERIALIZE			    4
+#define OSSL_FUNC_VC_DESERIALIZE		    5
+#define OSSL_FUNC_VC_FREECTX			    6
+#define OSSL_FUNC_VC_SET_CTX_PARAMS            	    7
+#define OSSL_FUNC_VC_GET_CTX_PARAMS                 8
 
 OSSL_CORE_MAKE_FUNC(void *, vc_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(char *, vc_create, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))

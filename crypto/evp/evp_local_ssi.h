@@ -13,23 +13,6 @@
 
 #include <openssl/types.h>
 
-/* VC */
-
-/*typedef struct vc {
-	char *atContext;
-	char *id;
-	char *type;
-	char *issuer;
-	char *issuanceDate;
-	char *expirationDate;
-	char *credentialSubject;
-	char *proofType;
-	char *proofCreated;
-	char *proofPurpose;
-	char *verificationMethod;
-	char *proofValue;
-} vc;*/
-
 struct evp_vc_ctx_st {
 	EVP_VC *meth;               /* Method structure */
     /*
@@ -38,23 +21,6 @@ struct evp_vc_ctx_st {
      */
     void *algctx;
 } /* EVP_VC_CTX */;
-
-/* DID */
-
-/*typedef struct method {
-	char *id;
-	char *type;
-	char *controller;
-	char *pkey;
-} method;
-
-typedef struct did {
-	char *atContext;
-	char *id;
-	char *created;
-	method *authentication;
-	method *assertion;
-} did;*/
 
 struct evp_did_ctx_st {
 	EVP_DID *meth;               /* Method structure */

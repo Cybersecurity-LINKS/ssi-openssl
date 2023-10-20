@@ -14,7 +14,6 @@
 #include <openssl/types.h>
 
 struct vc_st {
-	/* VC fields */
 	char *atContext;
 	char *id;
 	char *type;
@@ -27,11 +26,11 @@ struct vc_st {
 	char *proofPurpose;
 	char *verificationMethod;
 	char *proofValue;
-};
+} /* VC */;
 
 struct vc_issuer_st {
 	EVP_PKEY *pubkey;
 	char *verificationMethod;
-};
+} /* VC_ISSUER */;
 
 #endif /* INCLUDE_CRYPTO_VC_H_ */
