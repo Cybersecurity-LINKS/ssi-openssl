@@ -731,11 +731,11 @@ SSL *SSL_new(SSL_CTX *ctx)
     if (s->cert == NULL)
         goto err;
 
-	s->did = ssl_did_dup(ctx->did);
+    s->did = ssl_did_dup(ctx->did);
 	if (s->did == NULL)
-		goto err;
+        goto err;
 
-	s->vc = ssl_vc_dup(ctx->vc);
+    s->vc = ssl_vc_dup(ctx->vc);
 	if(s->vc == NULL)
 		goto err;
 

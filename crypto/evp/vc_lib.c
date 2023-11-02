@@ -1,9 +1,18 @@
 /*
- * Copyright 2023 Fondazione Links. All Rights Reserved.
+ * Copyright 2023 Fondazione Links.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * at http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.	
+ *
  */
 
 #include <string.h>
@@ -57,12 +66,12 @@ int EVP_VC_verify(EVP_VC_CTX *ctx, EVP_PKEY *pkey, OSSL_PARAM params[]){
 	return ctx->meth->verify(ctx->algctx, pkey, params);
 }
 
-int EVP_VC_deserialize(EVP_VC_CTX *ctx, unsigned char *vc_stream, OSSL_PARAM params[]) {
+int EVP_VC_deserialize(EVP_VC_CTX *ctx, char *vc_stream, OSSL_PARAM params[]) {
 
 	return ctx->meth->deserialize(ctx->algctx, vc_stream, params);
 }
 
-unsigned char *EVP_VC_serialize(EVP_VC_CTX *ctx, OSSL_PARAM params[]) {
+char *EVP_VC_serialize(EVP_VC_CTX *ctx, OSSL_PARAM params[]) {
 
 	return ctx->meth->serialize(ctx->algctx, params);
 }

@@ -3224,9 +3224,13 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 #endif
 
     if (full) {
-    	if(!is_did_handshake(s)){
+    	if(is_did_handshake(s)){
+            /* BIO_printf(bio, "---\nServer DID document\n%s\n", SSL_get0_peer_did_document(s));
+            if(is_vc_handshake(s)) {
+                BIO_printf(bio, "---\nServer VC\n%s\n", SSL_get0_peer_vc(s));
+            } */
+        } else {
 			int got_a_chain = 0;
-
 			sk = SSL_get_peer_cert_chain(s);
 			if (sk != NULL) {
 				got_a_chain = 1;
@@ -3327,7 +3331,7 @@ static void print_stuff(BIO *bio, SSL *s, int full)
                    EVP_PKEY_get_bits(pktmp));
     } else {
     	EVP_PKEY *pktmp;
-    	pktmp = SSL_get0_peer_did(s);
+    	pktmp = SSL_get0_peer_did_pubkey(s);
     	BIO_printf(bio, "Server DID public key is %d bit\n",
     	                   EVP_PKEY_get_bits(pktmp));
     }

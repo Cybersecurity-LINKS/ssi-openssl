@@ -1,9 +1,18 @@
 /*
- * Copyright 2023 Fondazione Links. All Rights Reserved.
+ * Copyright 2023 Fondazione Links.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * at http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.	
+ *
  */
 
 #include <openssl/tls1.h>
@@ -371,7 +380,7 @@ EXT_RETURN tls_construct_ctos_ssi_params(SSL *s, WPACKET *pkt,
 	s->s3.ssi_params_sent = 0;
 
 	if(s->did->key->did == NULL && s->did->key->did_len == 0 && 
-	(s->ext.ssi_params.ssiauth != VC_AUTHN && s->ext.ssi_params.ssiauth != DID_AUTHN 
+	((s->ext.ssi_params.ssiauth != VC_AUTHN && s->ext.ssi_params.ssiauth != DID_AUTHN) 
 	|| s->ext.ssi_params.didmethods == NULL))
 		return EXT_RETURN_NOT_SENT;
 
@@ -405,7 +414,7 @@ int tls_parse_stoc_ssi_params(SSL *s, PACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET did_methods;
 
-	if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
+	if (!PACKET_get_1(pkt, (unsigned int *)&s->ext.peer_ssi_params.ssiauth) ||
 		!PACKET_as_length_prefixed_1(pkt, &did_methods) || PACKET_remaining(&did_methods) == 0)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
@@ -557,7 +566,7 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt)
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 
-	unsigned char *vc_stream;
+	char *vc_stream;
 
 	s->session->peer_vc = OPENSSL_zalloc(sizeof(VC));
 	if (s->session->peer_vc == NULL)
@@ -586,20 +595,21 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt)
 		return MSG_PROCESS_ERROR;
 	}
 
-	vc_stream = OPENSSL_zalloc(sizeof(unsigned char) * vc_len);
-	if (vc_stream == NULL)
+	s->session->peer_vc_stream = OPENSSL_zalloc(vc_len);
+	if (s->session->peer_vc_stream == NULL)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
+	vc_stream = s->session->peer_vc_stream;
 
-	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len) || PACKET_remaining(pkt) != 0)
+	if (!PACKET_copy_bytes(pkt, (unsigned char *)vc_stream, vc_len) || PACKET_remaining(pkt) != 0)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
 		return MSG_PROCESS_ERROR;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "DM2", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -638,6 +648,8 @@ MSG_PROCESS_RETURN tls_process_server_vc(SSL *s, PACKET *pkt)
 	vc->verificationMethod = OPENSSL_strdup(tmp->verificationMethod);
 	vc->proofValue = OPENSSL_strdup(tmp->proofValue);
 
+	fprintf(stdout, "---\nServer VC\n%s\n", vc_stream);
+
 	EVP_VC_free(evp_vc);
 	EVP_VC_CTX_free(ctx);
 	OPENSSL_free(tmp);
@@ -661,8 +673,6 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst)
 
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
-	/* VC_ISSUER *p;
-	size_t i; */
 	BIO *did_pubkey = NULL;
 	EVP_PKEY *issuer_pubkey;
 
@@ -677,7 +687,7 @@ WORK_STATE tls_post_process_server_vc(SSL *s, WORK_STATE wst)
 		goto err;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "DM2", NULL);
 	if (evp_vc == NULL)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
@@ -865,7 +875,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt)
 		return 0;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "DM2", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -904,7 +914,7 @@ int tls_construct_client_vc(SSL *s, WPACKET *pkt)
 	if (s->vc_stream == NULL)
 		goto err;
 
-	if (!WPACKET_sub_memcpy_u16(pkt, s->vc_stream, strlen(s->vc_stream)))
+	if (!WPACKET_sub_memcpy_u16(pkt, (const unsigned char *)s->vc_stream, strlen(s->vc_stream)))
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
@@ -941,9 +951,8 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt)
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 	BIO *did_pubkey = NULL;
-	char *server_did;
-	unsigned int context, did_len;
-	uint8_t method;
+	unsigned char *server_did;
+	unsigned int context, did_len, method;
 
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
@@ -1024,7 +1033,7 @@ MSG_PROCESS_RETURN tls_process_server_did(SSL *s, PACKET *pkt)
 	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_PKEY, &tmp->assertion.pkey_pem, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
-	if (!EVP_DID_resolve(ctx_did, server_did, params) || tmp->authentication.pkey_pem == NULL)
+	if (!EVP_DID_resolve(ctx_did, (char *)server_did, params) || tmp->authentication.pkey_pem == NULL)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;
@@ -1143,9 +1152,10 @@ int tls_parse_ctos_ssi_params(SSL *s, PACKET *pkt,
 
 #ifndef OPENSSL_NO_TLS1_3
 	PACKET did_methods;
+	unsigned int auth_mode;
 
-	if (!PACKET_get_1(pkt, &s->ext.peer_ssi_params.ssiauth) ||
-		!PACKET_as_length_prefixed_1(pkt, &did_methods) || (s->ext.peer_ssi_params.ssiauth == 0 && PACKET_remaining(&did_methods) != 0))
+	if (!PACKET_get_1(pkt, &auth_mode) ||
+		!PACKET_as_length_prefixed_1(pkt, &did_methods) || (auth_mode == 0 && PACKET_remaining(&did_methods) != 0))
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
 		return 0;
@@ -1159,6 +1169,7 @@ int tls_parse_ctos_ssi_params(SSL *s, PACKET *pkt,
 		return 0;
 	}
 
+	s->ext.peer_ssi_params.ssiauth = auth_mode;
 	s->s3.ssi_params_received = 1;
 
 #endif
@@ -1248,7 +1259,7 @@ int tls_construct_server_vc(SSL *s, WPACKET *pkt)
 		return 0;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "DM2", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -1316,12 +1327,10 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 	EVP_VC *evp_vc = NULL;
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
-	/* VC_ISSUER *p;
-	size_t i; */
 	EVP_PKEY *issuer_pubkey;
 	BIO *did_pubkey = NULL;
 
-	unsigned char *vc_stream;
+	char *vc_stream;
 
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
@@ -1363,20 +1372,21 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 		return MSG_PROCESS_ERROR;
 	}
 
-	vc_stream = OPENSSL_malloc(sizeof(unsigned char) * vc_len);
-	if (vc_stream == NULL)
+	s->session->peer_vc_stream = OPENSSL_zalloc(vc_len);
+	if (s->session->peer_vc_stream == NULL)
 	{
-		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		return MSG_PROCESS_ERROR;
 	}
+	vc_stream = s->session->peer_vc_stream;
 
-	if (!PACKET_copy_bytes(pkt, vc_stream, vc_len) || PACKET_remaining(pkt) != 0)
+	if (!PACKET_copy_bytes(pkt, (unsigned char *)vc_stream, vc_len) || PACKET_remaining(pkt) != 0)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
 		return MSG_PROCESS_ERROR;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "VC", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "DM2", NULL);
 	if (evp_vc == NULL)
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_EVP_LIB);
@@ -1410,6 +1420,8 @@ MSG_PROCESS_RETURN tls_process_client_vc(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
+
+	fprintf(stdout, "---\nClient VC\n%s\n", vc_stream);
 
 	vc->atContext = OPENSSL_strdup(tmp_vc->atContext);
 	vc->id = OPENSSL_strdup(tmp_vc->id);
@@ -1632,16 +1644,18 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 	OSSL_PARAM params[13];
 	size_t params_n = 0;
 	BIO *did_pubkey = NULL;
-	char *client_did;
-	size_t context, did_len;
-	uint8_t method;
+	unsigned char *client_did;
+	unsigned int did_len, method;
+	PACKET context;
 
 	EVP_DID_CTX *ctx_did = NULL;
 	EVP_DID *evp_did = NULL;
 
 	s->statem.enc_read_state = ENC_READ_STATE_VALID;
 
-	if ((!PACKET_get_length_prefixed_1(pkt, &context) || (s->pha_context == NULL && PACKET_remaining(&context) != 0) || (s->pha_context != NULL && !PACKET_equal(&context, s->pha_context, s->pha_context_len))))
+	if ((!PACKET_get_length_prefixed_1(pkt, &context) 
+	|| (s->pha_context == NULL && PACKET_remaining(&context) != 0) 
+	|| (s->pha_context != NULL && !PACKET_equal(&context, s->pha_context, s->pha_context_len))))
 	{
 		SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_INVALID_CONTEXT);
 		goto err;
@@ -1671,6 +1685,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 		SSLfatal(s, SSL_AD_DECODE_ERROR, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
+	client_did[did_len] = '\0';
 
 	s->session->peer_did_doc = OPENSSL_zalloc(sizeof(DID_DOC));
 	DID_DOC *diddoc = s->session->peer_did_doc;
@@ -1717,7 +1732,7 @@ MSG_PROCESS_RETURN tls_process_client_did(SSL *s, PACKET *pkt)
 	params[params_n++] = OSSL_PARAM_construct_utf8_ptr(OSSL_DID_PARAM_ASSRTN_METH_PKEY, &tmp->assertion.pkey_pem, 0);
 	params[params_n] = OSSL_PARAM_construct_end();
 
-	if (!EVP_DID_resolve(ctx_did, client_did, params) || tmp->authentication.pkey_pem == NULL)
+	if (!EVP_DID_resolve(ctx_did, (char *)client_did, params) || tmp->authentication.pkey_pem == NULL)
 	{
 		SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
 		goto err;

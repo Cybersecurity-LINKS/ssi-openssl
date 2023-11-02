@@ -599,6 +599,7 @@ struct ssl_session_st {
 	DID_DOC *peer_did_doc;
 	/* This the VC of the other end */
 	VC *peer_vc;
+    char *peer_vc_stream;
 	
 	/*
      * when app_verify_callback accepts a session where the peer's
@@ -1390,7 +1391,7 @@ struct ssl_st {
             /* Pointer to the VC we use */
             VC *vc;
             /* serialized VC */
-            unsigned char *vc_stream;
+            char *vc_stream;
             /*
              * signature algorithms peer reports: e.g. supported signature
              * algorithms extension for server or as part of a certificate
@@ -1534,7 +1535,7 @@ struct ssl_st {
     struct cert_st /* CERT */ *cert;
     struct did_st /* DID */ *did;
     VC *vc;
-    unsigned char *vc_stream;
+    char *vc_stream;
     VC_ISSUER *trusted_issuers;
     size_t trusted_issuers_num;
 

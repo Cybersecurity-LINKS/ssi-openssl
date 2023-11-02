@@ -990,8 +990,8 @@ OSSL_CORE_MAKE_FUNC(int, did_get_ctx_params,
 OSSL_CORE_MAKE_FUNC(void *, vc_newctx, (void *provctx))
 OSSL_CORE_MAKE_FUNC(char *, vc_create, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(int, vc_verify, (void *vcctx, EVP_PKEY *pkey, OSSL_PARAM params[]))
-OSSL_CORE_MAKE_FUNC(unsigned char *, vc_serialize, (void *vcctx, OSSL_PARAM params[]))
-OSSL_CORE_MAKE_FUNC(int, vc_deserialize, (void *vcctx, unsigned char *vc_stream, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(char *, vc_serialize, (void *vcctx, OSSL_PARAM params[]))
+OSSL_CORE_MAKE_FUNC(int, vc_deserialize, (void *vcctx, char *vc_stream, OSSL_PARAM params[]))
 OSSL_CORE_MAKE_FUNC(void, vc_freectx, (void *vcctx))
 OSSL_CORE_MAKE_FUNC(int, vc_set_ctx_params,
                     (void *vcctx, const OSSL_PARAM params[]))

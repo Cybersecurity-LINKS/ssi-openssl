@@ -1,9 +1,18 @@
 /*
- * Copyright 2023 Fondazione Links. All Rights Reserved.
+ * Copyright 2023 Fondazione Links.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * at http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.	
+ *
  */
 
 #include <openssl/ssl.h>
@@ -70,12 +79,11 @@ int SSL_CTX_set_did_methods(SSL_CTX *ctx, const char *did_methods){
 	return 1;
 }
 
-static int 
-tls13_shared_didmethods(SSL *s, uint8_t **shmethods,
-                                   const uint8_t *pref, size_t preflen,
-                                   const uint8_t *allow, size_t allowlen){
+static int tls13_shared_didmethods(SSL *s, uint8_t **shmethods,
+                                   uint8_t *pref, size_t preflen,
+                                   uint8_t *allow, size_t allowlen){
 
-	const uint8_t *ptmp, *atmp;
+	uint8_t *ptmp, *atmp;
 	size_t i, j, nmatch = 0;
 
 	for (i = 0, ptmp = pref; i < preflen; i++, ptmp++) {
@@ -96,7 +104,7 @@ int tls13_set_shared_didmethods(SSL *s){
 
 	uint8_t **shmethods = NULL;
 	size_t nmatch, preflen, allowlen;
-	const uint8_t *pref, *allow;
+	uint8_t *pref, *allow;
 
 	OPENSSL_free(s->shared_didmethods);
 	s->shared_didmethods = NULL;
@@ -141,7 +149,7 @@ static int is_did_supported_by_peer(SSL *s) {
 	return 0;
 }
 
-int tls13_set_server_auth_method(SSL *s) {
+void tls13_set_server_auth_method(SSL *s) {
 
 	if(s->s3.ssi_params_received) {
 		if(s->did->key->did != NULL && s->did->key->did != 0 && is_did_supported_by_peer(s)) {
@@ -472,7 +480,16 @@ int SSL_CTX_use_did_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, char *did) {
 }
 
 /* Declared in openssl/include/openssl/ssl.h */
-EVP_PKEY *SSL_get0_peer_did(const SSL *s){
+char *SSL_get0_peer_did_document(const SSL *s){
+
+	if ((s == NULL) || (s->session == NULL))
+	        return NULL;
+	    else
+	        return s->session->peer_did_doc->id;
+}
+
+/* Declared in openssl/include/openssl/ssl.h */
+EVP_PKEY *SSL_get0_peer_did_pubkey(const SSL *s){
 
 	if ((s == NULL) || (s->session == NULL))
 	        return NULL;

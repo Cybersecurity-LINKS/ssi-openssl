@@ -2156,11 +2156,7 @@ static int tls_early_post_process_client_hello(SSL *s)
         }
 
 		if (SSL_IS_TLS13(s)) {
-			if(!tls13_set_server_auth_method(s)){
-				/*SSLfatal() already called*/
-				goto err;
-			}
-
+			tls13_set_server_auth_method(s);
             if((s->s3.auth_method == VC_AUTHN || s->s3.auth_method == DID_AUTHN) && send_ssi_request(s)) {
                 if(s->s3.auth_method != s->ext.peer_ssi_params.ssiauth || !tls13_set_shared_didmethods(s)) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);

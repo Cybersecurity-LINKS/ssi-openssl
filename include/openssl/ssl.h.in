@@ -1761,9 +1761,12 @@ __owur int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const unsigned char *d,
                                           long len);
 # endif
 
-__owur EVP_PKEY *SSL_get0_peer_did(const SSL *s);
 __owur int is_did_handshake(const SSL *s);
+__owur char *SSL_get0_peer_did_document(const SSL *s);
+__owur EVP_PKEY *SSL_get0_peer_did_pubkey(const SSL *s);
 __owur int SSL_CTX_use_did_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, char *did);
+__owur int is_vc_handshake(const SSL *s);
+__owur char *SSL_get0_peer_vc(const SSL *s);
 __owur int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
 __owur int SSL_CTX_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx,
                                        const unsigned char *d, long len);

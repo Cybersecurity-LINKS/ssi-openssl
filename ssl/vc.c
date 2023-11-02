@@ -1,9 +1,18 @@
 /*
- * Copyright 2023 Fondazione Links. All Rights Reserved.
+ * Copyright 2023 Fondazione Links.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * at http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.	
+ *
  */
 
 #include <openssl/evp_ssi.h>
@@ -28,7 +37,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 
 	size_t n = 0;
 	int c;
-	unsigned char *vc_stream;
+	char *vc_stream;
 
 	VC *tmp = OPENSSL_zalloc(sizeof(*tmp));
     if (ctx == NULL) {
@@ -49,7 +58,7 @@ int SSL_CTX_set_vc(SSL_CTX *ctx, char *vc_file) {
 		vc_stream[n++] = (unsigned char)c;
 	}
 
-	evp_vc = EVP_VC_fetch(NULL, "vc", NULL);
+	evp_vc = EVP_VC_fetch(NULL, "DM2", NULL);
 	if (evp_vc == NULL)
 		goto err;
 
@@ -268,3 +277,21 @@ int send_ssi_request(SSL *s) {
 
 	return 0;
 }
+
+/* Declared in openssl/include/openssl/ssl.h */
+char *SSL_get0_peer_vc(const SSL *s){
+
+	if ((s == NULL) || (s->session == NULL))
+	        return NULL;
+	    else
+	        return s->session->peer_vc_stream;
+}
+
+int is_vc_handshake(const SSL *s){
+
+	if(s == NULL || !SSL_IS_TLS13(s))
+		return 0;
+
+	return s->s3.ssi_params_sent && s->session->peer_vc_stream;
+}
+
